@@ -183,3 +183,12 @@ body::before { opacity: .27; }
   .hero-showcase .vertical-note { color: #635847; }
   .battlefield::before { opacity: .12; }
 }
+
+.brand-name > span { white-space: nowrap; }
+@media (max-width: 1150px) {
+  .brand .brand-name { font-size: 16px; line-height: 1.2; letter-spacing: 1px; }
+  .brand-name > span { display: block; }
+}
+@media (max-width: 650px) {
+  .brand .brand-name { font-size: 13px; letter-spacing: .5px; }
+}

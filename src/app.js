@@ -60,7 +60,7 @@ function storageError() { if (ui.storage) notify('本地存档暂不可用，请
 async function persistSettings() { try { await saveSettings(settings()); } catch { storageError(); } }
 function nav() {
   const activeScreen = ui.screen === 'battle' ? (ui.battleMode === 'dungeon' ? 'dungeon' : 'lobby') : ui.screen;
-  return `<header class="topbar"><button class="brand" data-action="route" data-screen="lobby" aria-label="你先别急，返回主页"><span class="seal">班</span><span><strong>你先别急</strong><small>职 场 水 墨 卡 牌</small></span></button><nav aria-label="主导航">${[['lobby','swords','对战'],['dungeon','leaf','副本'],['cards','book','藏牌阁'],['history','scroll','对局录']].map(([screen, symbol, title]) => `<button data-action="route" data-screen="${screen}" class="nav-item ${activeScreen === screen ? 'active' : ''}" ${activeScreen === screen ? 'aria-current="page"' : ''}>${icon(symbol, 17)}<span>${title}</span></button>`).join('')}</nav><div class="top-actions"><button class="text-button rules-button" data-action="rules">${icon('help',17)}<span>玩法教学</span></button><span class="top-divider"></span><button class="icon-button" data-action="sound" aria-label="${ui.sound ? '关闭' : '开启'}音效" aria-pressed="${ui.sound}">${icon(ui.sound ? 'sound' : 'mute',18)}</button></div></header>`;
+  return `<header class="topbar"><button class="brand" data-action="route" data-screen="lobby" aria-label="我知道你着急，但是你先别急，返回主页"><span class="seal">班</span><span><strong class="brand-name"><span>我知道你着急，</span><span>但是你先别急</span></strong><small>职 场 水 墨 卡 牌</small></span></button><nav aria-label="主导航">${[['lobby','swords','对战'],['dungeon','leaf','副本'],['cards','book','藏牌阁'],['history','scroll','对局录']].map(([screen, symbol, title]) => `<button data-action="route" data-screen="${screen}" class="nav-item ${activeScreen === screen ? 'active' : ''}" ${activeScreen === screen ? 'aria-current="page"' : ''}>${icon(symbol, 17)}<span>${title}</span></button>`).join('')}</nav><div class="top-actions"><button class="text-button rules-button" data-action="rules">${icon('help',17)}<span>玩法教学</span></button><span class="top-divider"></span><button class="icon-button" data-action="sound" aria-label="${ui.sound ? '关闭' : '开启'}音效" aria-pressed="${ui.sound}">${icon(ui.sound ? 'sound' : 'mute',18)}</button></div></header>`;
 }
 function cardMarkup(card, { mode = 'collection', instance = null, action = 'inspect', selected = false, playable = false, target = false, side = null, cost = card.cost, availability = null } = {}) {
   const unit = instance && 'health' in instance;
@@ -239,7 +239,7 @@ function render() {
   const previousModal = root.querySelector('.modal');
   const focused = document.activeElement;
   const view = ui.screen==='battle'&&ui.game ? battle() : ui.screen==='dungeon' ? dungeonPage(ui.dungeon,ui.dungeonDeckId,ui.saving,icon,art) : ui.screen==='cards' ? collection() : ui.screen==='history' ? history() : lobby();
-  const markup=nav()+view+`<footer class="site-footer"><span>你先别急 <i>·</i> 职场如江湖</span><span>${ui.storage?'落笔即存档':'本地存储不可用'} <i>·</i> 纯粹过招，不必氪金</span></footer>`+modal();
+  const markup=nav()+view+`<footer class="site-footer"><span>我知道你着急，但是你先别急 <i>·</i> 职场如江湖</span><span>${ui.storage?'落笔即存档':'本地存储不可用'} <i>·</i> 纯粹过招，不必氪金</span></footer>`+modal();
   renderMarkup(root, markup);
   document.body.classList.toggle('in-battle',ui.screen==='battle');
   document.body.classList.toggle('in-tutorial',!!ui.tutorial);
