@@ -1,0 +1,153 @@
+.battle-effects {
+  position: fixed;
+  z-index: 24;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.battle-fx-sequence { position: absolute; inset: 0; }
+.battle-fx-event { --fx-color: #ae472d; --fx-impact: 0ms; }
+.battle-fx-event.fx-from-source { --fx-impact: 220ms; }
+.fx-gain { --fx-color: #58743c; }
+.fx-shield { --fx-color: #857039; }
+.fx-control { --fx-color: #436c75; }
+.fx-pot { --fx-color: #963827; }
+
+.battle-fx-event > i { position: absolute; display: block; }
+.battle-fx-trail {
+  width: var(--fx-length);
+  height: 3px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, transparent, var(--fx-color));
+  box-shadow: 0 0 4px #f8eed6;
+  border-radius: 50%;
+  animation: battle-fx-trail 550ms ease-out both;
+}
+
+.battle-fx-mote {
+  width: 24px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fx-color);
+  box-shadow: 0 0 0 2px #fff3d6, 0 1px 7px var(--fx-color);
+  animation: battle-fx-flight 260ms ease-out both;
+}
+
+.fx-pot .battle-fx-mote {
+  width: 27px;
+  height: 17px;
+  border: 2px solid #fff0d1;
+  border-radius: 3px 3px 12px 12px;
+  background: #342824;
+  box-shadow: 0 2px 0 var(--fx-color), 0 0 10px #b5523c;
+}
+
+.fx-pot .battle-fx-mote::before {
+  content: "";
+  position: absolute;
+  width: 11px;
+  height: 5px;
+  inset: -7px auto auto 6px;
+  border-radius: 4px 4px 0 0;
+  border: 2px solid #fff0d1;
+  background: #342824;
+}
+
+.battle-fx-ring {
+  width: 52px;
+  aspect-ratio: 1;
+  border: 3px solid var(--fx-color);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #fff8ea, inset 0 0 13px var(--fx-color);
+  animation: battle-fx-ring 480ms ease-out var(--fx-impact) both;
+}
+
+.fx-hit .battle-fx-ring { border-style: dashed; }
+.fx-shield .battle-fx-ring { border-style: double; border-width: 6px; }
+.battle-fx-label {
+  padding: 2px 8px;
+  border: 1px solid #fff4d7;
+  border-radius: 3px;
+  background: var(--fx-color);
+  color: #fff9ed;
+  font: 700 13px/1.45 var(--sans, sans-serif);
+  font-style: normal;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px #2c1e2159;
+  animation: battle-fx-label 480ms ease-out var(--fx-impact) both;
+}
+
+@keyframes battle-fx-trail {
+  0% { transform: rotate(var(--fx-angle)) scaleX(.08); opacity: .45; }
+  43% { transform: rotate(var(--fx-angle)) scaleX(1); opacity: .86; }
+  100% { transform: rotate(var(--fx-angle)) scaleX(1); opacity: 0; }
+}
+@keyframes battle-fx-flight {
+  0% { transform: translate(-50%, -50%) rotate(var(--fx-angle)); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--fx-dx)), calc(-50% + var(--fx-dy))) rotate(var(--fx-angle)); opacity: 0; }
+}
+@keyframes battle-fx-pot-flight {
+  0% { transform: translate(-50%, -50%) rotate(-20deg); opacity: 1; }
+  50% { transform: translate(calc(-50% + var(--fx-dx) / 2), calc(-50% + var(--fx-dy) / 2 - var(--fx-arc))) rotate(16deg); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--fx-dx)), calc(-50% + var(--fx-dy))) rotate(32deg); opacity: 0; }
+}
+.fx-pot .battle-fx-mote { animation-name: battle-fx-pot-flight; }
+@keyframes battle-fx-ring {
+  0% { transform: translate(-50%, -50%) scale(.5); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.65); opacity: 0; }
+}
+@keyframes battle-fx-label {
+  0% { transform: translate(-50%, -50%); opacity: 1; }
+  64% { opacity: 1; }
+  100% { transform: translate(-50%, calc(-50% - 24px)); opacity: 0; }
+}
+
+.game-card.board.guard-unit {
+  outline: 2px solid #947343;
+  outline-offset: -3px;
+}
+.guard-unit.cue-target { outline-color: var(--action-orange); }
+.guard-seal {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 3px;
+  border: 1px solid #d5bf8e;
+  border-radius: 2px;
+  background: #5c4527;
+  color: #fff4d3;
+  font-size: 10px;
+  line-height: 1.1;
+}
+.guard-unit.cue-target .guard-seal { background: var(--action-orange); }
+.hero-identity.guarded { opacity: .7; }
+.hero-guarded-label {
+  position: absolute;
+  top: -9px;
+  right: 5px;
+  padding: 2px 5px;
+  border: 1px solid #927247;
+  border-radius: 2px;
+  background: #f8edd4;
+  color: #604522;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.turn-hint > .turn-hint-actions { display: inline-flex; flex: 0 0 auto; gap: 8px; align-items: center; }
+.turn-hint-actions > button { min-height: 31px; text-decoration: underline; white-space: nowrap; color: var(--red); }
+
+@media (max-width: 650px) {
+  .guard-seal { right: 2px; gap: 1px; font-size: 8px; padding: 2px; }
+  .guard-seal svg { width: 9px; height: 9px; }
+  .turn-hint-actions { flex-direction: column; gap: 0; }
+  .turn-hint-actions > button { min-height: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .battle-fx-trail, .battle-fx-mote { display: none !important; }
+  .battle-fx-ring, .battle-fx-label { transform: translate(-50%, -50%); }
+}

@@ -25,7 +25,7 @@ export function boardCue(game, side, unit, actions, selection = null) {
   if (!unit) return cue('blocked', '已离场', '这个立场已经离场。');
   const own = side === 0;
   const selectedActions = selection && playerTurn(game) ? actions.filter(action => action.type === selection.type && action.uid === selection.uid) : [];
-  if (selectedActions.some(action => action.target?.side === side && action.target.id === unit.uid)) return cue('target', selection.type === 'attack' ? '点击攻击' : '选为目标', '点击这里，完成当前选择。');
+  if (selectedActions.some(action => action.target?.side === side && action.target.id === unit.uid)) return cue('target', selection.type === 'attack' ? '点击攻击' : '选为目标', selection.type === 'attack' && unitTags(unit).includes('guard') ? '拦截立场，必须优先攻击。' : '点击这里，完成当前选择。');
   if (!own) return selection?.type === 'attack' && playerTurn(game) ? cue('not-target', '', '当前不能攻击这里：敌方有拦截时，必须先攻击橙色描边的拦截立场。') : null;
   if (game.status !== 'playing') return cue('blocked', '对局结束', '本局已经结束。');
   if (!playerTurn(game)) return cue('blocked', '对手回合', '等对手结束回合后，才能操作自己的立场。');
@@ -52,7 +52,7 @@ export function actionGuide(game, actions, selection = null) {
   else if (selection?.type === 'attack') {
     title = '第二步：点攻击目标';
     const guards = game.players[1].board.some(unit => unitTags(unit).includes('guard'));
-    message = guards ? '敌方有拦截，先点击橙色描边的立场。点「取消」可以重新选择。' : '攻击者已选中。点击橙色描边的敌方立场，或对手头像。';
+    message = guards ? '先攻击带「拦截」盾标的立场。对手头像和其他立场暂时不能攻击。' : '攻击者已选中。点击橙色描边的敌方立场，或对手头像。';
   } else if (selection?.type === 'play') {
     title = '第二步：点话术目标';
     const card = game.players[0].hand.find(instance => instance.uid === selection.uid);

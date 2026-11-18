@@ -46,7 +46,7 @@ try{
  await mobile.locator('.hand[data-uid="tutorial-waiting"]').click();await step(mobile,2);await mobile.locator('[data-action="end"]').click();await step(mobile,3);await finishLesson(mobile);
  assert.equal((await local(mobile)).game,null);assert.equal((await local(mobile)).matches.length,0);
  await mobile.locator('[data-action="tutorial-finish"]').click();assert.ok((await mobile.locator('.opponent-card.chosen').textContent()).includes('实习小白'));await mobile.reload();await mobile.locator('.start-button').waitFor();assert.equal(await mobile.locator('[data-action="tutorial-later"]').count(),0);
- await mobile.locator('.start-button').click();await mobile.locator('.battle-layout').waitFor();assert.equal(await mobile.locator('.tutorial-coach').count(),0);assert.equal((await local(mobile)).game.mode,undefined);
+ await mobile.locator('.start-button').click();await mobile.locator('.battle-layout').waitFor();assert.equal(await mobile.locator('.tutorial-coach, .battle-assist').count(),0);assert.equal((await local(mobile)).game.mode,undefined);
  await mobile.locator('[data-action="end"]').click();for(let i=0;i<100;i++){const game=(await local(mobile)).game;if(game.active===0&&game.turn>=3)break;await mobile.waitForTimeout(150);}assert.equal((await local(mobile)).game.active,0);
  await mobile.evaluate(async()=>{const {createGame}=await import('/src/engine.js');const {saveGame}=await import('/src/storage.js');const game=createGame({seed:1221});game.players[0].hand=[{id:'boss',uid:'expensive'}];await saveGame(game);});
  await mobile.reload();await mobile.locator('[data-action="resume"]').click();assert.ok((await mobile.locator('.turn-hint').textContent()).includes('当前没有可用动作'));assert.equal(await mobile.locator('[data-action="end"]').isDisabled(),false);
