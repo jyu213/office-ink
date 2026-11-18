@@ -22,11 +22,11 @@ async function fixture(deckId,legacy=false){
 }
 const overflow=()=>page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);
 try{
- await page.goto(url);await page.locator('.start-button').waitFor();assert.equal(await page.locator('.deck-tab').count(),6);
+ await page.goto(url);await page.locator('.start-button').waitFor();if(await page.locator('[data-action="tutorial-later"]').count())await page.locator('[data-action="tutorial-later"]').click();assert.equal(await page.locator('.deck-tab').count(),6);
  for(const id of ['blame','combo','control','shield','growth','recur']){
   await page.locator(`.deck-tab[data-value="${id}"]`).click();await page.locator('[data-action="deck-details"]').click();assert.equal(await page.locator('.deck-card-list>button').count(),10);assert.ok((await page.locator('.deck-detail-power').textContent()).includes('每回合一次'));await page.keyboard.press('Escape');
  }
- await page.locator('#opponent-deck').selectOption('growth');await page.locator('[data-action="opponent"][data-value="hard"]').click();await page.reload();await page.locator('.start-button').waitFor();assert.equal(await page.locator('#opponent-deck').inputValue(),'growth');assert.ok((await page.locator('.opponent-card.chosen').textContent()).includes('部门总监'));
+ await page.locator('#opponent-deck').selectOption('growth');await page.locator('[data-action="opponent"][data-value="hard"]').click();await page.reload();await page.locator('.start-button').waitFor();if(await page.locator('[data-action="tutorial-later"]').count())await page.locator('[data-action="tutorial-later"]').click();assert.equal(await page.locator('#opponent-deck').inputValue(),'growth');assert.ok((await page.locator('.opponent-card.chosen').textContent()).includes('部门总监'));
  await page.locator('[data-screen="cards"]').click();assert.equal(await page.locator('.collection-grid .game-card').count(),44);
  const clipped=await page.locator('.collection-grid .game-card').evaluateAll(cards=>cards.filter(card=>{const stats=card.querySelector('.card-stats');return stats&&stats.getBoundingClientRect().bottom>card.querySelector('.card-inner').getBoundingClientRect().bottom+1;}).map(card=>card.dataset.card));
  assert.deepEqual(clipped,[],'卡面文本不能挤掉攻防数值');

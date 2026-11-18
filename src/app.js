@@ -1,13 +1,16 @@
 import { CARDS, CARD_MAP, DECKS, OPPONENTS, TYPE_LABELS } from './cards.js';
 import { createGame, applyAction, legalActions, chooseAIAction, validSavedGame, restoreSavedGame, cardCost, unitTags, MAX_HEALTH } from './engine.js';
-import { loadLocalData, saveSettings, saveGame } from './storage.js';
+import { loadLocalData, saveSettings, saveGame, saveTutorial } from './storage.js';
+import { TUTORIAL_STEPS, createTutorial, advanceTutorial, applyTutorialAction, restoreTutorial, tutorialStep, tutorialActions } from './tutorial.js';
 import { renderMarkup } from './render.js';
 const root = document.querySelector('#app');
-const ui = { screen: 'lobby', deckId: 'blame', difficulty: 'normal', opponentDeckId: 'random', sound: false, game: null, matches: [], selected: null, modal: null, type: 'all', search: '', aiBusy: false, saving: false, storage: true };
+const ui = { screen: 'lobby', deckId: 'blame', difficulty: 'normal', opponentDeckId: 'random', sound: false, game: null, matches: [], selected: null, modal: null, type: 'all', search: '', aiBusy: false, saving: false, storage: true, tutorial: null, tutorialProgress: null, tutorialCompleted: false, tutorialDismissed: false };
 let aiTimer;
 let toastTimer;
 let audio;
 let modalTrigger;
+let savedMatch;
+let lastTutorialFocus;
 const paths = {
   arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
   swords: '<path d="m4 3 13 13m-3 3 6-6M3 4l1 5 5-5-6-1Zm17-1L7 16m3 3-6-6m17-9-1 5-5-5 6-1Z"/>',
@@ -32,7 +35,7 @@ const esc = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', 
 const art = (index, extra = '') => `<div class="ink-art art-${index} ${extra}" aria-hidden="true"></div>`;
 const currentDeck = () => DECKS.find(deck => deck.id === ui.deckId);
 const currentOpponent = () => OPPONENTS.find(opponent => opponent.id === ui.difficulty);
-const settings = () => ({ deckId: ui.deckId, difficulty: ui.difficulty, opponentDeckId: ui.opponentDeckId, sound: ui.sound });
+const settings = () => ({ deckId: ui.deckId, difficulty: ui.difficulty, opponentDeckId: ui.opponentDeckId, sound: ui.sound, tutorialCompleted: ui.tutorialCompleted, tutorialDismissed: ui.tutorialDismissed });
 function notify(message) {
   const toast = document.querySelector('#toast');
   toast.textContent = message; toast.classList.add('show');
@@ -52,18 +55,18 @@ function tone(kind = 'play') {
 function storageError() { if (ui.storage) notify('本地存档暂不可用，请勿关闭当前对局。'); ui.storage = false; }
 async function persistSettings() { try { await saveSettings(settings()); } catch { storageError(); } }
 function nav() {
-  return `<header class="topbar"><button class="brand" data-action="route" data-screen="lobby" aria-label="你先别急，返回主页"><span class="seal">班</span><span><strong>你先别急</strong><small>职 场 水 墨 卡 牌</small></span></button><nav aria-label="主导航">${[['lobby','swords','对战'],['cards','book','藏牌阁'],['history','scroll','对局录']].map(([screen, symbol, title]) => `<button data-action="route" data-screen="${screen}" class="nav-item ${ui.screen === screen || screen === 'lobby' && ui.screen === 'battle' ? 'active' : ''}" ${ui.screen === screen ? 'aria-current="page"' : ''}>${icon(symbol, 17)}<span>${title}</span></button>`).join('')}</nav><div class="top-actions"><button class="text-button rules-button" data-action="rules">${icon('help',17)}<span>初入江湖</span></button><span class="top-divider"></span><button class="icon-button" data-action="sound" aria-label="${ui.sound ? '关闭' : '开启'}音效" aria-pressed="${ui.sound}">${icon(ui.sound ? 'sound' : 'mute',18)}</button></div></header>`;
+  return `<header class="topbar"><button class="brand" data-action="route" data-screen="lobby" aria-label="你先别急，返回主页"><span class="seal">班</span><span><strong>你先别急</strong><small>职 场 水 墨 卡 牌</small></span></button><nav aria-label="主导航">${[['lobby','swords','对战'],['cards','book','藏牌阁'],['history','scroll','对局录']].map(([screen, symbol, title]) => `<button data-action="route" data-screen="${screen}" class="nav-item ${ui.screen === screen || screen === 'lobby' && ui.screen === 'battle' ? 'active' : ''}" ${ui.screen === screen ? 'aria-current="page"' : ''}>${icon(symbol, 17)}<span>${title}</span></button>`).join('')}</nav><div class="top-actions"><button class="text-button rules-button" data-action="rules">${icon('help',17)}<span>玩法教学</span></button><span class="top-divider"></span><button class="icon-button" data-action="sound" aria-label="${ui.sound ? '关闭' : '开启'}音效" aria-pressed="${ui.sound}">${icon(ui.sound ? 'sound' : 'mute',18)}</button></div></header>`;
 }
 function cardMarkup(card, { mode = 'collection', instance = null, action = 'inspect', selected = false, playable = false, target = false, side = null, cost = card.cost } = {}) {
   const unit = instance && 'health' in instance;
   const tags = (unit ? unitTags(instance) : card.tags || []).map(tag => ({ guard: '拦截', haste: '突袭', combo: '连击', lifesteal: '汲取', thorns: '反伤' }[tag]));
   const ability = { summonGrow: '新人入场 · 成长', spellGrow: '话术后 · 成长', spellPing: '话术后 · 补刀', deathGrow: '同伴离场 · 成长', deathToken: '离场 · 召唤', attackPot: '攻击 · 挂锅', endPot: '结束 · 挂锅', deathPot: '离场 · 挂锅', startArmor: '回合 · 护盾' }[card.effect];
-  return `<button class="game-card ${mode} type-${card.type} ${selected ? 'selected' : ''} ${playable ? 'playable' : ''} ${target ? 'targetable' : ''} ${unit && !instance.ready && side === 0 ? 'exhausted' : ''}" data-action="${action}" data-card="${card.id}" ${instance ? `data-uid="${instance.uid}"` : ''} ${side !== null ? `data-side="${side}"` : ''} aria-label="${esc(card.name)}，${card.cost}精力，${unit ? `${instance.attack}压迫，${instance.health}底气，` : ''}${esc(card.text)}" ${selected ? 'aria-pressed="true"' : ''}><div class="card-inner"><span class="card-cost ${cost < card.cost ? 'discounted' : ''}" title="${cost < card.cost ? `原费用 ${card.cost}，腹稿减费` : '精力费用'}">${cost}</span><span class="card-kind">${TYPE_LABELS[card.type]}</span>${art(card.art)}<div class="card-copy"><strong class="card-name">${card.name}</strong>${mode !== 'board' ? `<p class="card-description">${card.text}</p>` : `<span class="board-keyword">${instance.silenced ? '已沉默' : instance.frozen ? '流程暂停' : tags.join(' · ') || ability || (instance.ready ? '可以施压' : '稍作准备')}</span>`}${tags.length && mode !== 'board' && card.type !== 'unit' ? `<span class="card-keyword">${tags.join(' · ')}</span>` : ''}</div>${card.type === 'unit' ? `<div class="card-stats"><span class="attack-stat" title="压迫">${icon('swords',13)}${unit ? instance.attack : card.attack}</span><span class="health-stat ${unit && instance.health < instance.maxHealth ? 'hurt' : ''}" title="底气">${icon('shield',13)}${unit ? instance.health : card.health}</span></div>` : '<span class="card-ornament">✦</span>'}</div>${unit && instance.ready && side === 0 ? '<span class="ready-dot" title="可以攻击"></span>' : ''}</button>`;
+  return `<button class="game-card ${mode} type-${card.type} ${selected ? 'selected' : ''} ${playable ? 'playable' : ''} ${target ? 'targetable' : ''} ${unit && !instance.ready && side === 0 ? 'exhausted' : ''}" data-action="${action}" data-card="${card.id}" ${instance ? `data-uid="${instance.uid}"` : ''} ${side !== null ? `data-side="${side}"` : ''} aria-label="${esc(card.name)}，${card.cost}精力，${unit ? `${instance.attack}压迫，${instance.health}底气，` : ''}${esc(card.text)}" ${selected ? 'aria-pressed="true"' : ''}><div class="card-inner"><span class="card-cost ${cost < card.cost ? 'discounted' : ''}" title="${cost < card.cost ? `原费用 ${card.cost}，腹稿减费` : '精力费用'}">${cost}</span><span class="card-kind">${TYPE_LABELS[card.type]}</span>${art(card.art)}<div class="card-copy"><strong class="card-name">${card.name}</strong>${mode !== 'board' ? `<p class="card-description">${card.text}</p>` : `<span class="board-keyword">${instance.silenced ? '已沉默' : instance.frozen ? '流程暂停' : tags.join(' · ') || ability || (instance.ready ? '可以施压' : '稍作准备')}</span>`}${tags.length && mode !== 'board' && card.type !== 'unit' ? `<span class="card-keyword">${tags.join(' · ')}</span>` : ''}</div>${card.type === 'unit' ? `<div class="card-stats"><span class="attack-stat" title="压迫（攻击力）">${icon('swords',13)}${unit ? instance.attack : card.attack}</span><span class="health-stat ${unit && instance.health < instance.maxHealth ? 'hurt' : ''}" title="底气（生命值）">${icon('shield',13)}${unit ? instance.health : card.health}</span></div>` : '<span class="card-ornament">✦</span>'}</div>${unit && instance.ready && side === 0 ? '<span class="ready-dot" title="可以攻击"></span>' : ''}</button>`;
 }
 function lobby() {
   const wins = ui.matches.filter(match => match.winner === 0).length;
   const hasSave = validSavedGame(ui.game);
-  return `<main data-key="lobby" class="lobby page-enter"><section class="hero-section"><div class="hero-copy"><div class="eyebrow"><span></span>职场如江湖 · 出牌见真章</div><h1>话别说满，<br>牌要打<span class="red-word">狠</span>。</h1><p class="hero-description">一句「收到」藏锋芒，一声「对齐」起风浪。<br>把熟悉的职场话术，打成你的制胜一手。</p><div class="hero-meta"><span>${icon('swords',15)}单人人机对战</span><i></i><span>${icon('clock',15)}一局约 10 分钟</span><i></i><span>${icon('leaf',15)}无须联网</span></div><div class="hero-link"><button data-action="rules" class="underlined-button">第一次过招？看看怎么玩 ${icon('arrow',16)}</button></div></div><div class="hero-showcase" aria-label="水墨卡牌展示"><div class="ink-circle"></div><span class="vertical-note">笑里藏刀 · 纸上过招</span><div class="showcase-card showcase-left">${cardMarkup(CARD_MAP.leader, { mode: 'showcase' })}</div><div class="showcase-card showcase-right">${cardMarkup(CARD_MAP.supplement, { mode: 'showcase' })}</div><div class="showcase-card showcase-center">${cardMarkup(CARD_MAP.follow, { mode: 'showcase' })}</div><span class="showcase-seal">以和<br>为贵</span><span class="showcase-caption">山水有意，话术无情。</span></div></section><section class="setup-section"><div class="section-caption"><span class="section-index">壹</span><h2>今日，和谁过招？</h2><p>选个对手，试试你的职场生存之道。</p></div><div class="opponent-grid">${OPPONENTS.map((opponent,index) => `<button class="opponent-card ${ui.difficulty === opponent.id ? 'chosen' : ''}" data-action="opponent" data-value="${opponent.id}" aria-pressed="${ui.difficulty === opponent.id}"><span class="opponent-avatar opponent-${index}">${opponent.seal}</span><span class="opponent-info"><span class="opponent-title">${opponent.title}<span class="difficulty-dots" aria-label="${index+1}星难度">${'●'.repeat(index+1)}${'○'.repeat(2-index)}</span></span><strong>${opponent.name}</strong><small>${opponent.description}</small></span><span class="selection-mark">${ui.difficulty === opponent.id ? '✓' : ''}</span></button>`).join('')}</div><div class="battle-preparation"><div class="deck-choice"><span class="muted-label">套牌流派</span><div class="deck-tabs" role="group" aria-label="选择套牌">${DECKS.map(deck => `<button class="deck-tab ${ui.deckId === deck.id ? 'chosen' : ''}" data-action="deck" data-value="${deck.id}" aria-pressed="${ui.deckId === deck.id}">${deck.name}<small>${deck.style}</small></button>`).join('')}</div><p>${currentDeck().description}</p><div class="deck-power-summary"><b>${currentDeck().power.cost} 精力 · ${currentDeck().power.name}</b><span>${currentDeck().power.text}</span></div><button class="underlined-button" data-action="deck-details">看看这套牌怎么打 ${icon('arrow',14)}</button></div><div class="match-options"><label class="opponent-deck-label" for="opponent-deck">对手流派<select id="opponent-deck"><option value="random" ${ui.opponentDeckId==='random'?'selected':''}>随机流派</option>${DECKS.map(deck=>`<option value="${deck.id}" ${ui.opponentDeckId===deck.id?'selected':''}>${deck.name}</option>`).join('')}</select></label><div class="start-actions">${hasSave ? `<button class="resume-button" data-action="resume">${icon('clock',16)}继续第 ${Math.ceil(ui.game.turn/2)} 回合</button>` : ''}<button class="primary-button start-button" data-action="start">${icon('swords',19)}开始对局${icon('arrow',20)}</button><span class="start-caption">${hasSave ? '新开对局将替换当前存档' : '20 张套牌 · 专属技能 · 一场职场交锋'}</span></div></div></div></section><section class="bottom-strip"><div class="philosophy"><span class="small-seal">招</span><p>甩锅有来回，连击有章法。<small>每一句熟悉的话，都有不一样的打法。</small></p></div><div class="lobby-stat"><strong>${CARDS.length}</strong><span>张水墨卡牌</span></div><div class="lobby-stat"><strong>${ui.matches.length}</strong><span>场江湖过招</span></div><div class="lobby-stat"><strong>${ui.matches.length ? Math.round(wins/ui.matches.length*100)+'<em>%</em>' : '—'}</strong><span>你的胜率</span></div></section></main>`;
+  return `<main data-key="lobby" class="lobby page-enter"><section class="hero-section"><div class="hero-copy"><div class="eyebrow"><span></span>职场如江湖 · 出牌见真章</div><h1>话别说满，<br>牌要打<span class="red-word">狠</span>。</h1><p class="hero-description">一句「收到」藏锋芒，一声「对齐」起风浪。<br>把熟悉的职场话术，打成你的制胜一手。</p><div class="hero-meta"><span>${icon('swords',15)}单人人机对战</span><i></i><span>${icon('clock',15)}一局约 10 分钟</span><i></i><span>${icon('leaf',15)}无须联网</span></div><div class="hero-link"><button data-action="tutorial-start" class="tutorial-entry">${icon('book',16)}${ui.tutorialProgress?'继续新手教学':ui.tutorialCompleted?'重温新手教学':'新手教学，带你打一局'} ${icon('arrow',16)}</button><button data-action="rules" class="underlined-button">查看规则</button></div></div><div class="hero-showcase" aria-label="水墨卡牌展示"><div class="ink-circle"></div><span class="vertical-note">笑里藏刀 · 纸上过招</span><div class="showcase-card showcase-left">${cardMarkup(CARD_MAP.leader, { mode: 'showcase' })}</div><div class="showcase-card showcase-right">${cardMarkup(CARD_MAP.supplement, { mode: 'showcase' })}</div><div class="showcase-card showcase-center">${cardMarkup(CARD_MAP.follow, { mode: 'showcase' })}</div><span class="showcase-seal">以和<br>为贵</span><span class="showcase-caption">山水有意，话术无情。</span></div></section><section class="setup-section"><div class="section-caption"><span class="section-index">壹</span><h2>今日，和谁过招？</h2><p>选个对手，试试你的职场生存之道。</p></div><div class="opponent-grid">${OPPONENTS.map((opponent,index) => `<button class="opponent-card ${ui.difficulty === opponent.id ? 'chosen' : ''}" data-action="opponent" data-value="${opponent.id}" aria-pressed="${ui.difficulty === opponent.id}"><span class="opponent-avatar opponent-${index}">${opponent.seal}</span><span class="opponent-info"><span class="opponent-title">${opponent.title}<span class="difficulty-dots" aria-label="${index+1}星难度">${'●'.repeat(index+1)}${'○'.repeat(2-index)}</span></span><strong>${opponent.name}</strong><small>${opponent.description}</small></span><span class="selection-mark">${ui.difficulty === opponent.id ? '✓' : ''}</span></button>`).join('')}</div><div class="battle-preparation"><div class="deck-choice"><span class="muted-label">套牌流派</span><div class="deck-tabs" role="group" aria-label="选择套牌">${DECKS.map(deck => `<button class="deck-tab ${ui.deckId === deck.id ? 'chosen' : ''}" data-action="deck" data-value="${deck.id}" aria-pressed="${ui.deckId === deck.id}">${deck.name}<small>${deck.style}</small></button>`).join('')}</div><p>${currentDeck().description}</p><div class="deck-power-summary"><b>${currentDeck().power.cost} 精力 · ${currentDeck().power.name}</b><span>${currentDeck().power.text}</span></div><button class="underlined-button" data-action="deck-details">看看这套牌怎么打 ${icon('arrow',14)}</button></div><div class="match-options"><label class="opponent-deck-label" for="opponent-deck">对手流派<select id="opponent-deck"><option value="random" ${ui.opponentDeckId==='random'?'selected':''}>随机流派</option>${DECKS.map(deck=>`<option value="${deck.id}" ${ui.opponentDeckId===deck.id?'selected':''}>${deck.name}</option>`).join('')}</select></label><div class="start-actions">${hasSave ? `<button class="resume-button" data-action="resume">${icon('clock',16)}继续第 ${Math.ceil(ui.game.turn/2)} 回合</button>` : ''}<button class="primary-button start-button" data-action="start">${icon('swords',19)}开始对局${icon('arrow',20)}</button><span class="start-caption">${hasSave ? '新开对局将替换当前存档' : '20 张套牌 · 专属技能 · 一场职场交锋'}</span></div></div></div></section><section class="bottom-strip"><div class="philosophy"><span class="small-seal">招</span><p>甩锅有来回，连击有章法。<small>每一句熟悉的话，都有不一样的打法。</small></p></div><div class="lobby-stat"><strong>${CARDS.length}</strong><span>张水墨卡牌</span></div><div class="lobby-stat"><strong>${ui.matches.length}</strong><span>场江湖过招</span></div><div class="lobby-stat"><strong>${ui.matches.length ? Math.round(wins/ui.matches.length*100)+'<em>%</em>' : '—'}</strong><span>你的胜率</span></div></section></main>`;
 }
 function heroMarkup(side, actions) {
   const player = ui.game.players[side];
@@ -72,9 +75,10 @@ function heroMarkup(side, actions) {
   const active = ui.game.active === side && ui.game.status === 'playing';
   return `<div class="hero-row side-${side}"><button class="hero-identity ${isTarget ? 'targetable' : ''} ${active ? 'active-hero' : ''}" data-action="target" data-side="${side}" data-uid="hero" title="${DECKS.find(deck=>deck.id===player.deckId).power.name}：${DECKS.find(deck=>deck.id===player.deckId).power.text}" aria-label="${name}，心态${Math.max(0,player.health)}，护盾${player.armor}${isTarget ? '，点击选择目标' : ''}"><span class="hero-avatar">${side === 0 ? '侠' : OPPONENTS.find(item => item.id === ui.game.difficulty).seal}</span><span class="hero-identity-copy"><strong>${name}<small>${DECKS.find(deck => deck.id === player.deckId).name}</small></strong><span class="health-bar"><i style="width:${Math.max(0,player.health)/MAX_HEALTH*100}%"></i></span><span class="hero-vitals"><b>${Math.max(0,player.health)}</b> / ${MAX_HEALTH} 心态 ${player.armor ? `<span class="armor-counter">${icon('shield',12)}${player.armor}</span>` : ''}</span></span></button><div class="hero-resources"><span class="energy-count">${player.energy}<small> / ${player.maxEnergy}</small><em>精力</em></span><div class="energy-dots">${Array.from({length: Math.max(1,player.maxEnergy)},(_,index)=>`<i class="${index<player.energy?'filled':''}"></i>`).join('')}</div></div><div class="hero-pots">${Array.from({length:3},(_,index)=>`<span class="pot-icon ${index<player.pots?'full':''}" title="${index<player.pots?'回合结束造成2点伤害':'空锅位'}">${icon('flame',17)}</span>`).join('')}<small>${player.pots ? `${player.pots} 个待处理的锅` : '无锅一身轻'}</small></div><div class="deck-pile" title="剩余牌库"><span>牌</span><small>${player.deck.length}</small></div></div>`;
 }
+function availableActions() { return ui.tutorial ? tutorialActions(ui.tutorial) : legalActions(ui.game); }
 function selectionActions() {
   if (!ui.game || !ui.selected) return [];
-  return legalActions(ui.game).filter(action => action.type === ui.selected.type && action.uid === ui.selected.uid);
+  return availableActions().filter(action => action.type === ui.selected.type && action.uid === ui.selected.uid);
 }
 function boardMarkup(side, actions) {
   const player = ui.game.players[side];
@@ -98,12 +102,13 @@ function battle() {
   const game = ui.game;
   const player = game.players[0];
   const opponent = game.players[1];
-  const playable = legalActions(game);
+  const playable = availableActions();
   const isMyTurn = game.active === 0 && game.status === 'playing' && !ui.saving;
   const targets = selectionActions();
   const selectedCard = ui.selected?.type === 'play' ? CARD_MAP[player.hand.find(card => card.uid === ui.selected.uid)?.id] : null;
-  const instruction = ui.selected ? ui.selected.type === 'attack' ? '选择一个发光的敌方目标，发起攻击。' : `「${selectedCard?.name}」：选择一个发光的目标。` : game.status === 'finished' ? '本局已结束，江湖下次再见。' : isMyTurn ? '点击手牌出牌；点击己方就绪立场，再选择攻击目标。' : '对手思考中，稍安勿躁……';
-  return `<main data-key="battle-layout" class="battle-layout page-enter"><section class="battle-main"><div class="battle-heading"><button class="text-button" data-action="route" data-screen="lobby">${icon('back',16)}暂歇一下</button><div class="round-label"><span>第 ${Math.ceil(game.turn/2)} 回合</span><i></i>${game.status==='finished'?'对局结束':isMyTurn?'轮到你出招':'对手回合'}</div><button class="text-button mobile-log" data-action="log">${icon('scroll',16)}对局记录</button><span class="save-status">${ui.storage?(ui.saving?'存档中…':'已自动存档'):'存档不可用'}${icon('leaf',13)}</span></div><div class="battlefield"><div class="enemy-hand" aria-label="对手${opponent.hand.length}张手牌">${Array.from({length:opponent.hand.length},()=>'<span class="card-back"><i>班</i></span>').join('')}<small>手牌 ${opponent.hand.length} · 技能${opponent.powerUsed?'已用':'待用'}</small></div>${heroMarkup(1,targets)}<div class="secret-zone enemy-secrets">${opponent.secrets.map(()=>'<span title="对手埋下的未知伏笔">伏</span>').join('')}</div>${boardMarkup(1,targets)}<div class="battle-divider"><span>纸上过招</span><i>对</i><span>点到为止</span></div>${boardMarkup(0,targets)}<div class="secret-zone player-secrets">${player.secrets.map(secret=>`<button data-action="inspect" data-card="${secret.id}">伏 · ${CARD_MAP[secret.id].name}</button>`).join('')}</div>${heroMarkup(0,targets)}</div>${powerPanel(isMyTurn,playable)}<div class="turn-controls"><div class="turn-hint ${ui.selected?'selecting':''}">${icon(ui.selected?'spark':'help',15)}<span>${instruction}</span>${ui.selected?'<button data-action="cancel">取消</button>':''}</div><div class="turn-buttons">${player.pots?`<button class="resolve-button" data-action="resolve" ${!isMyTurn||player.energy<1?'disabled':''}>${icon('flame',16)}处理一个锅 <small>1 精力</small></button>`:''}<button class="primary-button end-button" data-action="end" ${!isMyTurn?'disabled':''}>${game.status==='finished'?'对局已结束':isMyTurn?'结束回合':'对手思考中'}${icon(isMyTurn?'arrow':'clock',17)}</button></div></div><div class="hand-area"><span class="hand-label">你的手牌 <b>${player.hand.length}/8</b></span><div class="hand-scroll">${player.hand.length ? player.hand.map(instance=>cardMarkup(CARD_MAP[instance.id], { mode:'hand',instance,action:'hand',cost:cardCost(player,CARD_MAP[instance.id]),selected:ui.selected?.uid===instance.uid,playable:isMyTurn&&playable.some(action=>action.type==='play'&&action.uid===instance.uid) })).join(''):'<p class="empty-hand">手中无牌，静候下一手。</p>'}</div></div></section><aside class="battle-aside"><div class="aside-title">${icon('scroll',18)}过招实录<span>实时</span></div><div class="combat-log">${game.log.slice(-20).reverse().map(entry=>`<p class="log-entry kind-${entry.kind} ${entry.side===0?'own-log':''}"><span>${entry.side===0?'你':entry.side===1?'敌':'记'}</span>${esc(entry.text)}</p>`).join('')}</div><div class="aside-tip"><span class="small-seal">诀</span><strong>锅别留到下班</strong><p>回合结束，每个锅造成 2 点伤害。花 1 精力处理，或用话术甩回去。</p><button data-action="rules" class="underlined-button">查看全部规则 ${icon('arrow',14)}</button></div></aside></main>`;
+  const guidance = !playable.some(action=>action.type!=='end') ? '当前没有可用动作，点击「结束回合」，下回合会补充精力并抽牌。' : !playable.some(action=>['play','attack'].includes(action.type))&&playable.some(action=>action.type==='power') ? '现在可以使用流派技能，或点击「结束回合」。' : '点击发光手牌出牌；攻击时先点己方立场，再选目标。';
+  const instruction = ui.tutorial ? '跟随上方教学提示，点击描边的目标。' : ui.selected ? ui.selected.type === 'attack' ? '选择一个发光的敌方目标，发起攻击。' : `「${selectedCard?.name}」：选择一个发光的目标。` : game.status === 'finished' ? '本局已结束，江湖下次再见。' : isMyTurn ? guidance : '对手思考中，稍安勿躁……';
+  return `<main data-key="battle-layout" class="battle-layout page-enter"><section class="battle-main">${tutorialCoach()}<div class="battle-heading"><button class="text-button" data-action="route" data-screen="lobby">${icon('back',16)}${ui.tutorial?'退出教学':'暂歇一下'}</button><div class="round-label"><span>${ui.tutorial?'练习残局':`第 ${Math.ceil(game.turn/2)} 回合`}</span><i></i>${game.status==='finished'?'对局结束':isMyTurn?'轮到你出招':'对手回合'}</div><button class="text-button mobile-log" data-action="log">${icon('scroll',16)}对局记录</button><span class="save-status">${ui.storage?(ui.saving?'存档中…':'已自动存档'):'存档不可用'}${icon('leaf',13)}</span></div><div class="battlefield"><div class="enemy-hand" aria-label="对手${opponent.hand.length}张手牌">${Array.from({length:opponent.hand.length},()=>'<span class="card-back"><i>班</i></span>').join('')}<small>手牌 ${opponent.hand.length} · 技能${opponent.powerUsed?'已用':'待用'}</small></div>${heroMarkup(1,targets)}<div class="secret-zone enemy-secrets">${opponent.secrets.map(()=>'<span title="对手埋下的未知伏笔">伏</span>').join('')}</div>${boardMarkup(1,targets)}<div class="battle-divider"><span>纸上过招</span><i>对</i><span>点到为止</span></div>${boardMarkup(0,targets)}<div class="secret-zone player-secrets">${player.secrets.map(secret=>`<button data-action="inspect" data-card="${secret.id}">伏 · ${CARD_MAP[secret.id].name}</button>`).join('')}</div>${heroMarkup(0,targets)}</div>${powerPanel(isMyTurn,playable)}<div class="turn-controls"><div class="turn-hint ${ui.selected?'selecting':''}"><button class="inline-help" data-action="rules" aria-label="查看玩法与新手教学">${icon(ui.selected?'spark':'help',15)}</button><span>${instruction}</span>${ui.selected?'<button data-action="cancel">取消</button>':''}</div><div class="turn-buttons">${player.pots?`<button class="resolve-button" data-action="resolve" ${!isMyTurn||!playable.some(action=>action.type==='resolve')?'disabled':''}>${icon('flame',16)}处理一个锅 <small>1 精力</small></button>`:''}<button class="primary-button end-button" data-action="end" ${!isMyTurn||ui.tutorial&&!playable.some(action=>action.type==='end')?'disabled':''}>${game.status==='finished'?'对局已结束':isMyTurn?'结束回合':'对手思考中'}${icon(isMyTurn?'arrow':'clock',17)}</button></div></div><div class="hand-area"><span class="hand-label">你的手牌 <b>${player.hand.length}/8</b></span><div class="hand-scroll">${player.hand.length ? player.hand.map(instance=>cardMarkup(CARD_MAP[instance.id], { mode:'hand',instance,action:'hand',cost:cardCost(player,CARD_MAP[instance.id]),selected:ui.selected?.uid===instance.uid,playable:isMyTurn&&playable.some(action=>action.type==='play'&&action.uid===instance.uid) })).join(''):'<p class="empty-hand">手中无牌，静候下一手。</p>'}</div></div></section><aside class="battle-aside"><div class="aside-title">${icon('scroll',18)}过招实录<span>实时</span></div><div class="combat-log">${game.log.slice(-20).reverse().map(entry=>`<p class="log-entry kind-${entry.kind} ${entry.side===0?'own-log':''}"><span>${entry.side===0?'你':entry.side===1?'敌':'记'}</span>${esc(entry.text)}</p>`).join('')}</div><div class="aside-tip"><span class="small-seal">诀</span><strong>锅别留到下班</strong><p>回合结束，每个锅造成 2 点伤害。花 1 精力处理，或用话术甩回去。</p><button data-action="rules" class="underlined-button">查看全部规则 ${icon('arrow',14)}</button></div></aside></main>`;
 }
 function filteredCards() { return CARDS.filter(card=>(ui.type==='all'||card.type===ui.type)&&(card.name+card.text+card.flavor).includes(ui.search.trim())); }
 function collectionGrid() { const cards=filteredCards(); return cards.length?cards.map(card=>cardMarkup(card)).join(''):'<div class="empty-state"><span class="empty-glyph">寻</span><h3>还没有找到这句话</h3><p>试试「锅」「连击」或「护盾」。</p></div>'; }
@@ -115,13 +120,81 @@ function history() {
   const matches = [...ui.matches].sort((a,b)=>b.endedAt-a.endedAt);
   return `<main data-key="history-page" class="history-page page-enter"><div class="page-title"><span class="eyebrow">胜负有时 · 过招有痕</span><h1>对局录</h1><p>每一次纸上交锋，都值得记上一笔。</p></div><div class="history-stats">${[[ui.matches.length,'总对局'],[wins,'胜局'],[ui.matches.length?Math.round(wins/ui.matches.length*100)+'%':'—','胜率']].map(([value,label])=>`<div><strong>${value}</strong><span>${label}</span></div>`).join('')}</div>${matches.length?`<div class="history-list"><div class="history-list-head"><span>胜负</span><span>你的套牌</span><span>对手</span><span>回合</span><span>时间</span></div>${matches.map(match=>`<div class="history-item"><span class="result-seal ${match.winner===0?'win':'loss'}">${match.winner===0?'胜':match.winner==='draw'?'和':'负'}</span><strong>${DECKS.find(deck=>deck.id===match.deckId)?.name||'旧版套牌'}</strong><span>${OPPONENTS.find(opponent=>opponent.id===match.difficulty)?.name||'电脑'}</span><span>${match.turns} 回合</span><time datetime="${new Date(match.endedAt).toISOString()}">${new Intl.DateTimeFormat('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(match.endedAt)}</time></div>`).join('')}</div>`:`<div class="empty-state history-empty"><span class="empty-glyph">录</span><h3>江湖初见，尚无胜负</h3><p>完成第一场对局，让你的职场传说从这里开始。</p><button class="primary-button" data-action="route" data-screen="lobby">去过招 ${icon('arrow',17)}</button></div>`}</main>`;
 }
+function tutorialWelcome() {
+  return `<span class="eyebrow">新手入门 · 约 3 分钟</span><h2 id="modal-title">先跟着打一局，就会了。</h2><p class="modal-lead">教练会一步步告诉你该点哪里，用实际操作学会出牌、攻击、解锅和技能。</p><div class="welcome-basics"><p><b>心态</b><span>就是你的生命值，归零便落败。</span></p><p><b>精力</b><span>用来打牌，回合开始时回满。</span></p><p><b>立场 / 话术</b><span>立场留在场上攻击；话术立即生效。</span></p></div><p class="tutorial-save-note">练习可随时退出和继续，进度单独保存。</p><div class="dialog-actions"><button class="secondary-button" data-action="tutorial-later">我先自己试试</button><button class="primary-button" data-action="tutorial-start">跟着打一局 ${icon('arrow',17)}</button></div>`;
+}
+function tutorialComplete() {
+  return `<div class="result-content"><span class="big-result-seal won">会</span><span class="eyebrow">新手实战 · 已完成</span><h2 id="modal-title">这就入门了。</h2><p>你已经亲手完成出牌、攻击、解锅和技能。正式开局从 1 精力开始，没牌可出时可以先结束回合。下一局可以先选「实习小白」，用「甩锅宗师」继续练手。</p><div class="tutorial-takeaways"><p>① 看费用，留下够用的精力。</p><p>② 攻击先选自己的立场，再选目标。</p><p>③ 处理锅、用技能，最后结束回合。</p></div><p class="tutorial-save-note">这次练习不计入战绩，正式对局仍可继续。</p><div class="dialog-actions"><button class="secondary-button" data-action="tutorial-restart">再练一遍</button><button class="primary-button" data-action="tutorial-finish">完成教学，回到对战 ${icon('arrow',17)}</button></div></div>`;
+}
+function tutorialCoach() {
+  if (!ui.tutorial) return '';
+  const step=tutorialStep(ui.tutorial);
+  if (!step) return `<section class="tutorial-coach tutorial-finished" data-key="tutorial-coach"><span class="eyebrow">新手实战 · 已完成</span><h2>你已经学会基本操作了。</h2><button class="primary-button" data-action="tutorial-summary">查看教学小结 ${icon('arrow',15)}</button></section>`;
+  const selected=ui.selected?.uid===step.action?.uid;
+  const instruction=selected&&step.selectedInstruction?step.selectedInstruction:step.instruction;
+  return `<section class="tutorial-coach" data-key="tutorial-coach" aria-labelledby="tutorial-title"><div class="tutorial-coach-head"><span>新手实战 <b>${ui.tutorial.step+1} / ${TUTORIAL_STEPS.length}</b></span><div><button data-action="tutorial-restart" ${ui.saving?'disabled':''}>重来</button><button data-action="route" data-screen="lobby">退出教学</button></div></div><div class="tutorial-progress" aria-label="教学进度 ${ui.tutorial.step+1} / ${TUTORIAL_STEPS.length}">${TUTORIAL_STEPS.map((_,index)=>`<i class="${index<=ui.tutorial.step?'done':''}"></i>`).join('')}</div><h2 id="tutorial-title">${ui.tutorial.step+1}. ${step.title}</h2><p>${step.detail}</p><div class="tutorial-instruction-row"><strong class="tutorial-instruction" aria-live="polite">${instruction}</strong>${step.nextLabel?`<button class="primary-button" data-action="tutorial-next" ${ui.saving?'disabled':''}>${step.nextLabel} ${icon('arrow',15)}</button>`:''}</div></section>`;
+}
+function updateTutorialFocus() {
+  root.querySelectorAll('.tutorial-focus').forEach(element=>element.classList.remove('tutorial-focus'));
+  if (!ui.tutorial||ui.modal) return;
+  const step=tutorialStep(ui.tutorial);
+  if (!step) return;
+  const selected=ui.selected?.uid===step.action?.uid;
+  const target=root.querySelector(selected&&step.targetSelector?step.targetSelector:step.selector);
+  target?.classList.add('tutorial-focus');
+  const key=`${ui.tutorial.game.id}:${ui.tutorial.step}:${ui.selected?.uid||''}`;
+  if (ui.saving||key===lastTutorialFocus) return;
+  lastTutorialFocus=key;
+  const focus=step.nextLabel?root.querySelector('[data-action="tutorial-next"]'):target?.matches('button')?target:target?.querySelector('button');
+  focus?.focus({preventScroll:true});
+  const motion=window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth';
+  target?.scrollIntoView({block:'center',inline:'nearest',behavior:motion});
+}
+function closeModal() {
+  if(ui.modal?.type==='welcome'){ui.tutorialDismissed=true;void persistSettings();}
+  ui.modal=null;render();
+}
+async function enterTutorial(restart=false) {
+  if(ui.saving)return;
+  clearTimeout(aiTimer);ui.aiBusy=false;
+  if(ui.tutorial&&!restart){ui.modal=null;render();return;}
+  if(!ui.tutorial)savedMatch=ui.game;
+  const progress=restart?createTutorial():restoreTutorial(ui.tutorialProgress)||createTutorial();
+  ui.tutorial=progress;ui.tutorialProgress=progress;ui.game=progress.game;ui.screen='battle';ui.selected=null;ui.modal=null;ui.tutorialDismissed=true;lastTutorialFocus=null;
+  ui.saving=true;window.scrollTo({top:0,behavior:'instant'});render();
+  try{await saveTutorial(progress);await persistSettings();}catch{storageError();}
+  finally{ui.saving=false;render();}
+}
+async function performTutorial(action) {
+  if(!ui.tutorial||ui.saving)return;
+  let progress;
+  try{progress=action?applyTutorialAction(ui.tutorial,action):advanceTutorial(ui.tutorial);}catch(error){notify(error.message);return;}
+  ui.tutorial=progress;ui.game=progress.game;ui.tutorialProgress=progress.completed?null:progress;ui.selected=null;ui.saving=true;tone(action?.type);render();
+  try{
+    await saveTutorial(progress);
+    document.querySelector('#announcer').textContent=tutorialStep(progress)?.instruction||'新手教学已完成。';
+  }catch{storageError();}
+  finally{if(progress.completed){ui.tutorialCompleted=true;await persistSettings();if(ui.tutorial===progress)ui.modal={type:'tutorial-complete'};}ui.saving=false;render();}
+}
+function leaveTutorial() {
+  if(!ui.tutorial)return;
+  ui.tutorialProgress=ui.tutorial.completed?null:ui.tutorial;
+  ui.game=savedMatch||null;savedMatch=null;ui.tutorial=null;lastTutorialFocus=null;
+}
+function finishTutorial() {
+  const recommend=!validSavedGame(savedMatch);
+  route('lobby');
+  if(recommend){ui.deckId='blame';ui.difficulty='easy';void persistSettings();render();}
+}
 function rulesContent() {
-  return `<span class="eyebrow">初入江湖</span><h2 id="modal-title">三分钟，学会过招。</h2><p class="modal-lead">把对手的 25 点心态打到 0，便赢下这一局。</p><div class="rules-steps"><div><span>一</span><section><h3>精力出牌</h3><p>每回合抽 1 张牌，精力上限增加 1 并回满，最高 8 点。卡牌左上角是费用。</p></section></div><div><span>二</span><section><h3>立场交锋</h3><p>立场留在场上，通常下回合才能攻击。点击就绪立场，再点击敌方立场或对手头像。立场交锋会互相造成伤害。</p></section></div><div><span>三</span><section><h3>锅要处理</h3><p>每人最多背 3 个锅。自己的回合结束时，每个锅造成 2 点伤害后清空。花 1 精力处理一个，或用话术甩回去。</p></section></div><div><span>四</span><section><h3>看准时机</h3><p>话术立即生效；伏笔暗置，等对手触发。护盾先抵挡心态伤害。手牌最多 8 张，场上最多 5 个立场。</p></section></div></div><div class="keyword-guide"><p><b>后手补偿</b> 后手起手额外获得一张「临时加把劲」，可在一个回合内临时增加 1 精力。</p><p><b>流派技能</b> 每回合一次，按按钮费用消耗精力，不算使用话术。</p><p><b>沉默</b> 移除关键词和触发能力，保留当前攻防。</p><p><b>汲取</b> 主动攻击造成的实际心态或底气伤害，会恢复自己的心态。</p><p><b>反伤</b> 被立场攻击时，对攻击者额外造成 1 点伤害。</p><p><b>回收</b> 非临时立场离场进入交接区；回手或返聘会消耗对应记录并重置状态。</p><p><b>拦截</b> 立场攻击必须优先选择它；话术可以绕过。</p><p><b>连击</b> 本回合此前打过话术牌，即可触发额外效果。</p><p><b>突袭</b> 入场当回合就能攻击任意合法目标。</p><p><b>疲劳</b> 牌库抽空后，每次抽牌依次受到 1、2、3… 点伤害。</p></div><p class="local-note">${icon('leaf',15)}进度和战绩仅保存在当前浏览器，不同设备和网址不互通。</p><button class="primary-button modal-main-button" data-action="close">心中有数，准备过招 ${icon('arrow',17)}</button>`;
+  return `<span class="eyebrow">玩法教学</span><h2 id="modal-title">三分钟，学会过招。</h2><p class="modal-lead">把对手的 25 点心态打到 0，便赢下这一局。</p><button class="primary-button rules-tutorial-button" data-action="tutorial-start">${icon('book',17)}${ui.tutorial?'回到当前教学':'跟着提示，实际打一遍'} ${icon('arrow',17)}</button><div class="rules-steps"><div><span>一</span><section><h3>精力出牌</h3><p>每回合抽 1 张牌，精力上限增加 1 并回满，最高 8 点。卡牌左上角是费用。</p></section></div><div><span>二</span><section><h3>立场交锋</h3><p>立场留在场上，通常下回合才能攻击。点击就绪立场，再点击敌方立场或对手头像。立场交锋会互相造成伤害。</p></section></div><div><span>三</span><section><h3>锅要处理</h3><p>每人最多背 3 个锅。自己的回合结束时，每个锅造成 2 点伤害后清空。花 1 精力处理一个，或用话术甩回去。</p></section></div><div><span>四</span><section><h3>看准时机</h3><p>话术立即生效；伏笔暗置，等对手触发。护盾先抵挡心态伤害。手牌最多 8 张，场上最多 5 个立场。</p></section></div></div><div class="keyword-guide"><p><b>后手补偿</b> 后手起手额外获得一张「临时加把劲」，可在一个回合内临时增加 1 精力。</p><p><b>流派技能</b> 每回合一次，按按钮费用消耗精力，不算使用话术。</p><p><b>沉默</b> 移除关键词和触发能力，保留当前攻防。</p><p><b>汲取</b> 主动攻击造成的实际心态或底气伤害，会恢复自己的心态。</p><p><b>反伤</b> 被立场攻击时，对攻击者额外造成 1 点伤害。</p><p><b>回收</b> 非临时立场离场进入交接区；回手或返聘会消耗对应记录并重置状态。</p><p><b>拦截</b> 立场攻击必须优先选择它；话术可以绕过。</p><p><b>连击</b> 本回合此前打过话术牌，即可触发额外效果。</p><p><b>突袭</b> 入场当回合就能攻击任意合法目标。</p><p><b>疲劳</b> 牌库抽空后，每次抽牌依次受到 1、2、3… 点伤害。</p></div><p class="local-note">${icon('leaf',15)}进度和战绩仅保存在当前浏览器，不同设备和网址不互通。</p><button class="primary-button modal-main-button" data-action="close">心中有数，准备过招 ${icon('arrow',17)}</button>`;
 }
 function modal() {
   if (!ui.modal) return '';
   let content;
   if (ui.modal.type === 'rules') content=rulesContent();
+  if (ui.modal.type === 'welcome') content=tutorialWelcome();
+  if (ui.modal.type === 'tutorial-complete') content=tutorialComplete();
   if (ui.modal.type === 'deck') content=deckDetails(DECKS.find(deck=>deck.id===ui.modal.deck));
   if (ui.modal.type === 'grave') content=graveDetails();
   if (ui.modal.type === 'inspect') {
@@ -142,6 +215,7 @@ function render() {
   const markup=nav()+(ui.screen==='battle'&&ui.game?battle():ui.screen==='cards'?collection():ui.screen==='history'?history():lobby())+`<footer class="site-footer"><span>你先别急 <i>·</i> 职场如江湖</span><span>${ui.storage?'落笔即存档':'本地存储不可用'} <i>·</i> 纯粹过招，不必氪金</span></footer>`+modal();
   renderMarkup(root, markup);
   document.body.classList.toggle('in-battle',ui.screen==='battle');
+  document.body.classList.toggle('in-tutorial',!!ui.tutorial);
   document.body.classList.toggle('modal-open',!!ui.modal);
   const nextModal = root.querySelector('.modal');
   if (nextModal && nextModal !== previousModal) {
@@ -151,9 +225,11 @@ function render() {
     if (modalTrigger?.isConnected) modalTrigger.focus({preventScroll:true});
     modalTrigger = null;
   }
+  updateTutorialFocus();
 }
 function showModal(value) { ui.modal=value; render(); }
 function route(screen) {
+  if (ui.tutorial && screen !== 'battle') leaveTutorial();
   clearTimeout(aiTimer);ui.aiBusy=false;ui.selected=null;ui.modal=null;ui.screen=screen;render();window.scrollTo({top:0,behavior:'instant'});
 }
 function refreshMatch(game) {
@@ -161,6 +237,7 @@ function refreshMatch(game) {
   ui.matches=ui.matches.filter(match=>match.id!==game.id).concat(record);
 }
 async function commit(action) {
+  if (ui.tutorial) return performTutorial(action);
   if (ui.saving || !ui.game || ui.game.status!=='playing') return;
   ui.saving=true;ui.selected=null;
   try {
@@ -173,6 +250,7 @@ async function commit(action) {
 }
 function queueAI() {
   clearTimeout(aiTimer);
+  if (ui.tutorial) {ui.aiBusy=false;return;}
   if (ui.screen!=='battle'||ui.game?.status!=='playing'||ui.game.active!==1) {ui.aiBusy=false;return;}
   ui.aiBusy=true;
   const id=ui.game.id;
@@ -197,12 +275,14 @@ async function begin(force=false) {
 function pickHand(uid) {
   if (ui.game.active!==0||ui.game.status!=='playing'||ui.saving) return;
   const instance=ui.game.players[0].hand.find(card=>card.uid===uid);
-  const options=legalActions(ui.game).filter(action=>action.type==='play'&&action.uid===uid);
+  const options=availableActions().filter(action=>action.type==='play'&&action.uid===uid);
+  if (!options.length && ui.tutorial) {notify(tutorialStep(ui.tutorial)?.instruction||'教学已经完成。');return;}
   if (!options.length) { const card=CARD_MAP[instance.id];notify(cardCost(ui.game.players[0],card)>ui.game.players[0].energy?'精力不够，先看看别的牌。':card.effect==='armorStrike'?'先攒一些护盾，再将压力打回去。':card.effect==='revive'?'需要交接区有立场，且场上有空位。':card.type==='unit'?'场上最多只能有 5 个立场。':'当前没有合适的目标，或已有相同伏笔。');return; }
   if (!options[0].target) {void commit(options[0]);return;}
   ui.selected=ui.selected?.uid===uid?null:{type:'play',uid};render();
 }
 function target(side,uid) {
+  if(ui.tutorial&&!ui.selected){notify(tutorialStep(ui.tutorial)?.instruction||'教学已完成。');return;}
   if (!ui.selected) {if (side===1&&uid==='hero') notify('先选一张话术或就绪的己方立场。');return;}
   const action=selectionActions().find(action=>action.target?.side===side&&action.target.id===uid);
   if (action) void commit(action);else notify('请选择发光的目标；有拦截时，立场必须先攻击拦截。');
@@ -213,6 +293,12 @@ root.addEventListener('click',event=>{
   switch(action) {
     case 'route':route(button.dataset.screen);break;
     case 'rules':showModal({type:'rules'});break;
+    case 'tutorial-start':void enterTutorial();break;
+    case 'tutorial-next':void performTutorial();break;
+    case 'tutorial-restart':void enterTutorial(true);break;
+    case 'tutorial-later':closeModal();break;
+    case 'tutorial-summary':showModal({type:'tutorial-complete'});break;
+    case 'tutorial-finish':finishTutorial();break;
     case 'deck-details':showModal({type:'deck',deck:ui.deckId});break;
     case 'grave':showModal({type:'grave'});break;
     case 'power':if(ui.game?.active===0)void commit({type:'power'});break;
@@ -223,8 +309,8 @@ root.addEventListener('click',event=>{
     case 'force-start':void begin(true);break;
     case 'again':ui.deckId=ui.game.deckId;ui.difficulty=ui.game.difficulty;void begin(true);break;
     case 'resume':if(validSavedGame(ui.game)){ui.screen='battle';ui.modal=null;ui.difficulty=ui.game.difficulty;ui.deckId=ui.game.deckId;render();queueAI();}break;
-    case 'close':ui.modal=null;render();break;
-    case 'backdrop':if(event.target===button){ui.modal=null;render();}break;
+    case 'close':closeModal();break;
+    case 'backdrop':if(event.target===button)closeModal();break;
     case 'inspect':showModal({type:'inspect',card:button.dataset.card});break;
     case 'filter':ui.type=button.dataset.value;render();break;
     case 'hand':pickHand(button.dataset.uid);break;
@@ -232,9 +318,9 @@ root.addEventListener('click',event=>{
       const side=Number(button.dataset.side);const uid=button.dataset.uid;
       if(ui.selected&&selectionActions().some(action=>action.target?.side===side&&action.target.id===uid)){target(side,uid);break;}
       if(side===0&&ui.game.active===0&&ui.game.status==='playing'&&!ui.saving){
-        const available=legalActions(ui.game).some(action=>action.type==='attack'&&action.uid===uid);
+        const available=availableActions().some(action=>action.type==='attack'&&action.uid===uid);
         if(available){ui.selected=ui.selected?.uid===uid?null:{type:'attack',uid};render();}
-        else notify('此立场还不能攻击：可能刚入场、已行动，或正在走流程。');
+        else notify(ui.tutorial?tutorialStep(ui.tutorial)?.instruction||'教学已完成。':'此立场还不能攻击：可能刚入场、已行动，或正在走流程。');
       }else if(!ui.selected)showModal({type:'inspect',card:button.dataset.card});else target(side,uid);
       break;
     }
@@ -250,7 +336,7 @@ root.addEventListener('change',event=>{if(event.target.id==='opponent-deck'){ui.
 root.addEventListener('input',event=>{if(event.target.id==='card-search'){ui.search=event.target.value;renderMarkup(document.querySelector('#collection-grid'), collectionGrid());}});
 root.addEventListener('contextmenu',event=>{const card=event.target.closest('[data-card]');if(card){event.preventDefault();showModal({type:'inspect',card:card.dataset.card});}});
 document.addEventListener('keydown',event=>{
-  if(event.key==='Escape'){ui.modal=null;ui.selected=null;render();}
+  if(event.key==='Escape'){if(ui.modal)closeModal();else{ui.selected=null;render();}}
   if(event.key==='Tab'&&ui.modal){
     const focusable=[...document.querySelectorAll('.modal button:not(:disabled), .modal input, .modal [tabindex="0"]')];
     const first=focusable[0],last=focusable.at(-1);
@@ -264,6 +350,9 @@ try {
   if(OPPONENTS.some(opponent=>opponent.id===data.settings.difficulty))ui.difficulty=data.settings.difficulty;
   if(data.settings.opponentDeckId==='random'||DECKS.some(deck=>deck.id===data.settings.opponentDeckId))ui.opponentDeckId=data.settings.opponentDeckId;
   ui.sound=!!data.settings.sound;ui.matches=data.matches;
+  ui.tutorialCompleted=!!data.settings.tutorialCompleted;ui.tutorialDismissed=!!data.settings.tutorialDismissed;
+  ui.tutorialProgress=restoreTutorial(data.tutorial);
   ui.game=restoreSavedGame(data.game);
 } catch {storageError();}
+if(!ui.game&&!ui.tutorialProgress&&!ui.tutorialCompleted&&!ui.tutorialDismissed)ui.modal={type:'welcome'};
 render();

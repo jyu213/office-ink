@@ -56,7 +56,7 @@ try {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(baseURL);
-    await page.locator('.start-button').waitFor();
+    await page.locator('.start-button').waitFor();if(await page.locator('[data-action="tutorial-later"]').count())await page.locator('[data-action="tutorial-later"]').click();
     await page.evaluate(async () => {
       const { createGame } = await import('/src/engine.js');
       const { saveGame } = await import('/src/storage.js');

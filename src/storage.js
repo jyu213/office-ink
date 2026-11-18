@@ -21,8 +21,9 @@ export async function loadLocalData() {
     const tx = db.transaction(['kv', 'matches'], 'readonly');
     const settings = tx.objectStore('kv').get('settings');
     const game = tx.objectStore('kv').get('current');
+    const tutorial = tx.objectStore('kv').get('tutorial');
     const matches = tx.objectStore('matches').getAll();
-    tx.oncomplete = () => resolve({ settings: settings.result || {}, game: game.result || null, matches: matches.result || [] });
+    tx.oncomplete = () => resolve({ settings: settings.result || {}, game: game.result || null, tutorial: tutorial.result || null, matches: matches.result || [] });
     tx.onerror = tx.onabort = () => reject(tx.error || new Error('读取失败'));
   });
 }
@@ -36,6 +37,7 @@ export async function saveSettings(settings) {
   });
 }
 export async function saveGame(game) {
+  if (game.mode === 'tutorial') throw new Error('教学进度应独立保存');
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(['kv', 'matches'], 'readwrite');
@@ -43,5 +45,16 @@ export async function saveGame(game) {
     if (game.status === 'finished') tx.objectStore('matches').put({ id: game.id, startedAt: game.startedAt, endedAt: Date.now(), deckId: game.deckId, difficulty: game.difficulty, winner: game.winner, turns: Math.ceil(game.turn / 2) });
     tx.oncomplete = resolve;
     tx.onerror = tx.onabort = () => reject(tx.error || new Error('存档失败'));
+  });
+}
+
+export async function saveTutorial(tutorial) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('kv', 'readwrite');
+    if (tutorial.completed) tx.objectStore('kv').delete('tutorial');
+    else tx.objectStore('kv').put(tutorial, 'tutorial');
+    tx.oncomplete = resolve;
+    tx.onerror = tx.onabort = () => reject(tx.error || new Error('教学进度保存失败'));
   });
 }

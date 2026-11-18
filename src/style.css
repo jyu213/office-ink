@@ -67,3 +67,35 @@
 .ability-panel>p{min-height:48px}
 .deck-choice>p{min-height:38px}
 @media(max-width:900px){.deck-power-summary{min-height:57px}}
+/* 可操作的新手教学。 */
+.hero-link{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.tutorial-entry{display:inline-flex;align-items:center;gap:8px;border:1px solid #929f7d;background:#dfe5d455;color:#536747;padding:10px 13px;font-size:11px;letter-spacing:.5px;border-radius:2px}
+.tutorial-entry:hover{background:#d8e1cc;border-color:#7f9369}
+.rules-tutorial-button{width:100%;margin-top:20px}
+.welcome-basics{margin-top:24px;padding:6px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.welcome-basics>p{display:flex;gap:16px;padding:12px 0;font-size:12px;line-height:1.9;color:#7d896f}
+.welcome-basics b{min-width:77px;font-weight:500;color:#536c45}
+.tutorial-save-note{font-size:10px;line-height:1.9;color:#88967a;margin-top:19px}
+.tutorial-takeaways{text-align:left;max-width:350px;margin:22px auto;padding:13px 18px;background:#dfe6d455;border:1px solid #b5c0a566}
+.tutorial-takeaways>p{font-size:12px;line-height:2.2;color:#637950}
+.tutorial-coach{position:sticky;top:8px;z-index:15;min-height:200px;padding:16px 19px;margin:0 0 15px;background:#f3f0e6;border:1px solid #a3b28d;border-left:3px solid #7f9367;box-shadow:0 5px 18px #333b2720;border-radius:3px}
+.tutorial-coach-head{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#7a8a66;font-size:10px;letter-spacing:1px}
+.tutorial-coach-head b{font-family:Georgia,serif;font-size:12px;font-weight:400;margin-left:8px;color:#5c7449}
+.tutorial-coach-head>div{display:flex;gap:15px}
+.tutorial-coach-head button{padding:3px 0;color:#818e71;font-size:10px;letter-spacing:0}
+.tutorial-coach-head button:hover{color:var(--red)}
+.tutorial-progress{display:flex;gap:4px;margin-top:10px}
+.tutorial-progress i{height:3px;background:#d6ddc9;flex:1}
+.tutorial-progress .done{background:#84996c}
+.tutorial-coach h2{font-family:var(--serif);font-size:23px;font-weight:500;line-height:1.4;letter-spacing:1px;margin:10px 0 7px}
+.tutorial-coach>p{font-size:11px;line-height:1.9;color:#7b886c}
+.tutorial-instruction-row{display:flex;align-items:center;gap:14px;justify-content:space-between;min-height:43px;margin-top:8px}
+.tutorial-instruction{font-size:12px;font-weight:500;line-height:1.8;color:#8e4c39}
+.tutorial-instruction-row>.primary-button{font-size:10px;letter-spacing:0;min-height:36px;padding:9px 12px;flex-shrink:0}
+.tutorial-focus{outline:2px solid #a65b42!important;outline-offset:3px;box-shadow:0 0 0 5px #a65b421c!important}
+.in-tutorial .game-card:not(.tutorial-focus):not(.targetable){opacity:.66}
+.in-tutorial .hero-identity.tutorial-focus{background:#e3d9c855}
+.tutorial-finished{min-height:160px}
+.tutorial-finished>.primary-button{margin-top:15px}
+.turn-hint>.inline-help{display:inline-grid;place-items:center;padding:0;margin:0;width:18px;height:18px;color:#7b8b69;text-decoration:none;flex-shrink:0}
+@media(max-width:650px){.hero-link{gap:13px}.tutorial-entry{font-size:10px;padding:10px 12px}.tutorial-coach{min-height:215px;padding:12px 13px;margin-bottom:11px;top:5px}.tutorial-coach h2{font-size:21px;margin-top:8px}.tutorial-coach>p{font-size:10px;line-height:1.9}.tutorial-coach-head{font-size:9px}.tutorial-coach-head button{font-size:9px}.tutorial-coach-head>div{gap:12px}.tutorial-instruction-row{align-items:flex-start;flex-direction:column;gap:8px;min-height:52px}.tutorial-instruction{font-size:11px}.tutorial-instruction-row>.primary-button{padding:8px 11px;font-size:9px;min-height:32px}.welcome-basics>p{font-size:11px;gap:10px}.welcome-basics b{min-width:68px}.tutorial-save-note{font-size:9px}.tutorial-takeaways>p{font-size:11px}.rules-tutorial-button{font-size:10px;letter-spacing:1px}.tutorial-finished{min-height:155px}}
