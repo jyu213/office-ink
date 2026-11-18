@@ -99,3 +99,44 @@
 .tutorial-finished>.primary-button{margin-top:15px}
 .turn-hint>.inline-help{display:inline-grid;place-items:center;padding:0;margin:0;width:18px;height:18px;color:#7b8b69;text-decoration:none;flex-shrink:0}
 @media(max-width:650px){.hero-link{gap:13px}.tutorial-entry{font-size:10px;padding:10px 12px}.tutorial-coach{min-height:215px;padding:12px 13px;margin-bottom:11px;top:5px}.tutorial-coach h2{font-size:21px;margin-top:8px}.tutorial-coach>p{font-size:10px;line-height:1.9}.tutorial-coach-head{font-size:9px}.tutorial-coach-head button{font-size:9px}.tutorial-coach-head>div{gap:12px}.tutorial-instruction-row{align-items:flex-start;flex-direction:column;gap:8px;min-height:52px}.tutorial-instruction{font-size:11px}.tutorial-instruction-row>.primary-button{padding:8px 11px;font-size:9px;min-height:32px}.welcome-basics>p{font-size:11px;gap:10px}.welcome-basics b{min-width:68px}.tutorial-save-note{font-size:9px}.tutorial-takeaways>p{font-size:11px}.rules-tutorial-button{font-size:10px;letter-spacing:1px}.tutorial-finished{min-height:155px}}
+/* 普通对局的可行动状态：文字、边框和图标同时表达，不移动卡牌。 */
+.battle-assist{position:sticky;top:8px;z-index:12;display:grid;grid-template-rows:20px 40px 28px;gap:6px;height:122px;padding:10px 13px;margin:10px 0 13px;background:#f5f1e7;border:1px solid #9faf8b;border-left:3px solid #64844d;border-radius:3px;box-shadow:0 4px 13px #303b2317}
+.assist-header{display:grid;grid-template-columns:minmax(0,1fr) auto 56px;align-items:center;gap:12px}
+.assist-header>strong{font-size:13px;color:#3d5f2c;white-space:nowrap}
+.assist-header>span{font-size:10px;color:#758868;white-space:nowrap}
+.assist-header>span>b{font-family:Georgia,serif;font-weight:400;font-size:14px;color:#416430}
+.assist-header>button{font-size:10px;padding:2px 0;color:#a55338;text-decoration:underline;white-space:nowrap}
+.assist-header>.concealed{visibility:hidden}
+.assist-message{display:flex;align-items:center;min-width:0;font-size:11px;line-height:1.75;color:#647a55}
+.assist-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-width:470px}
+.assist-actions>button{display:flex;align-items:center;justify-content:center;gap:4px;padding:4px 5px;font-size:10px;white-space:nowrap;color:#3c612d;border:1px solid #99ae86;background:#dce7d033;border-radius:2px}
+.assist-actions>button:not(:disabled):hover{background:#dce7d0;border-color:#6f8d56}
+.assist-actions>button:disabled{opacity:.65;color:#8b927f;border-color:#c6cbbb;background:#e7e9df55}
+.assist-actions b{font-family:Georgia,serif;font-size:13px;font-weight:600}
+.battle-assist.choosing-target{border-color:#b9784e;border-left-color:#b76732}
+.choosing-target .assist-header>strong,.choosing-target .assist-message{color:#99552f}
+.assist-actions>.target-shortcut{color:#99552f;border-color:#b9784e;background:#f0dfcb66}
+.card-action-badge{position:absolute;left:50%;top:61px;transform:translateX(-50%);z-index:3;display:flex;align-items:center;justify-content:center;gap:3px;min-width:57px;max-width:calc(100% - 8px);padding:2px 6px;font-size:9px;line-height:15px;font-weight:600;white-space:nowrap;border:1px solid #839174;border-radius:3px;background:#eeeadd;color:#7f8873;box-shadow:0 2px 4px #28332222;pointer-events:none}
+.board .card-action-badge{top:54px;min-width:62px;font-size:9px;padding:1px 5px}
+.game-card.hand.cue-playable,.game-card.board.cue-attackable{opacity:1;border-color:#4e812f;box-shadow:inset 0 0 0 1px #4e812f,0 0 0 2px #6a9b4530,0 4px 8px #405b2825}
+.cue-playable>.card-action-badge,.cue-attackable>.card-action-badge{color:#f8f5e9;background:#4e7439;border-color:#385d26;letter-spacing:.5px}
+.game-card.hand.cue-blocked,.game-card.board.cue-blocked{opacity:.7;border-color:#a8ad9b}
+.cue-blocked>.card-action-badge{color:#6f7864;background:#eaeade;border-color:#aaaF9a;box-shadow:none;font-weight:500}
+.game-card.cue-selected{opacity:1;border-color:#53747c;box-shadow:inset 0 0 0 1px #53747c,0 0 0 2px #53747c33}
+.cue-selected>.card-action-badge{background:#4e6b72;color:#f5f0e4;border-color:#3c5961}
+.game-card.cue-target{opacity:1;border-color:#b46a30;box-shadow:inset 0 0 0 1px #b46a30,0 0 0 3px #c8843d33}
+.cue-target>.card-action-badge{color:#fff4e6;background:#ad622c;border-color:#925020}
+.game-card.cue-not-target{opacity:.55}
+.hero-identity{position:relative}
+.hero-target-label{position:absolute;top:-9px;right:5px;padding:3px 7px;color:#fff4e6;background:#ad622c;border:1px solid #925020;font-size:9px;line-height:15px;border-radius:2px;box-shadow:0 2px 4px #4c2c1622;pointer-events:none}
+.hand-label{min-height:25px;font-size:10px;gap:8px}
+.hand-label>strong{color:#436b32;font-size:10px;font-weight:600}
+.hand-label>small{margin-left:auto;color:#869276;font-size:9px}
+.end-button.recommended-end{background:#4e693d;border-color:#4e693d;box-shadow:0 0 0 3px #819b6733}
+.in-tutorial .battle-assist{display:none}
+@media(max-width:650px){.battle-assist{top:5px;grid-template-rows:20px 44px 28px;height:126px;padding:10px 11px;margin:8px 0 11px}.assist-header{gap:7px;grid-template-columns:minmax(0,1fr) auto 48px}.assist-header>strong{font-size:12px}.assist-header>span,.assist-header>button{font-size:9px}.assist-message{font-size:10px;line-height:1.8}.assist-actions{gap:5px}.assist-actions>button{font-size:9px;gap:3px;padding:4px 2px}.assist-actions svg{width:11px;height:11px}.assist-actions b{font-size:12px}.hand-label{font-size:9px;gap:6px}.hand-label>strong{font-size:9px}.hand-label>small{font-size:7px}.card-action-badge{top:58px;font-size:8px;line-height:13px;padding:2px 5px;min-width:53px}.board .card-action-badge{top:36px;min-width:52px;font-size:7px;line-height:13px;padding:1px 3px;gap:2px}.board .card-action-badge svg{width:8px;height:8px}.hero-target-label{font-size:8px;padding:2px 5px;top:-9px;right:0}}
+.game-card.cue-target{filter:none}
+.hero-identity.targetable{border-color:#b46a30}
+.card-action-badge{font-size:10px}
+.board .card-action-badge{font-size:10px}
+@media(max-width:650px){.assist-header>strong{font-size:13px}.assist-message{font-size:11px}.assist-actions>button{font-size:10px}.card-action-badge{font-size:9px;line-height:14px}.board .card-action-badge{font-size:9px;line-height:15px}}
