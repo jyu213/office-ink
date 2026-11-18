@@ -29,8 +29,8 @@ test('锅可主动处理，结算使用护盾，结束时清空',()=>{
  state=applyAction(state,{type:'resolve'});assert.equal(state.players[0].energy,7);assert.equal(state.players[0].pots,2);
  state=applyAction(state,{type:'end'});assert.equal(state.players[0].health,22);assert.equal(state.players[0].armor,0);assert.equal(state.players[0].pots,0);assert.equal(state.active,1);
 });
-test('聊天记录消耗一次，反制整次挂锅，伏笔日志不提前泄露名称',()=>{
- let state=fixture();state.active=1;const secret=hand(state,1,'receipts');state=applyAction(state,play(secret));assert.ok(!state.log.at(-1).text.includes('聊天记录'));
+test('留痕伏笔消耗一次，反制整次挂锅，伏笔日志不提前泄露名称',()=>{
+ let state=fixture();state.active=1;const secret=hand(state,1,'receipts');state=applyAction(state,play(secret));assert.ok(!state.log.at(-1).text.includes(CARD_MAP.receipts.name));
  state.active=0;const follower=hand(state,0,'follow');state=applyAction(state,play(follower));assert.equal(state.players[1].pots,0);assert.equal(state.players[0].health,22);assert.equal(state.players[1].secrets.length,0);
 });
 test('甩锅移除自己的锅，并受对方锅位上限约束',()=>{

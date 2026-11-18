@@ -36,7 +36,7 @@ test('技能服从锅位、场位、交接区和手牌上限',()=>{
   assert.ok(!legalActions(game).some(action=>action.type==='power'),deckId);
  }
 });
-test('腹稿只减免下一张话术，不产生负费用或提前触发连击',()=>{
+test('预演只减免下一张话术，不产生负费用或提前触发连击',()=>{
  let game=fixture('combo');const spell=hand(game,0,'supplement');game=applyAction(game,{type:'power'});assert.equal(cardCost(game.players[0],CARD_MAP.supplement),1);
  game=applyAction(game,play(spell,1,'hero'));assert.equal(game.players[0].energy,5);assert.equal(game.players[1].health,23);assert.equal(game.players[0].spellDiscount,0);
  game=fixture('combo');game.players[0].spellDiscount=1;const overtime=hand(game,0,'overtime');assert.equal(cardCost(game.players[0],CARD_MAP.overtime),0);game=applyAction(game,play(overtime));assert.equal(game.players[0].spellDiscount,0);

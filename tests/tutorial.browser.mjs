@@ -28,7 +28,7 @@ try{
  const normal=await desktop.evaluate(async()=>{const {createGame}=await import('/src/engine.js');const {saveGame}=await import('/src/storage.js');const game=createGame({deckId:'growth',difficulty:'hard',opponentDeckId:'shield',seed:77119});await saveGame(game);return game;});
  await desktop.reload();await desktop.locator('.tutorial-entry').click();await step(desktop,0);assert.equal(await desktop.locator('[data-action="end"]').isDisabled(),true);
  await desktop.locator('[data-action="tutorial-next"]').click();await step(desktop,1);
- await desktop.locator('.hand[data-uid="tutorial-supplement"]').click();assert.equal((await local(desktop)).tutorial.step,1);assert.ok((await desktop.locator('#toast').textContent()).includes('大家都在等你'));
+ await desktop.locator('.hand[data-uid="tutorial-supplement"]').click();assert.equal((await local(desktop)).tutorial.step,1);assert.ok((await desktop.locator('#toast').textContent()).includes('全员等你对齐'));
  await desktop.locator('.hand[data-uid="tutorial-waiting"]').click();await step(desktop,2);assert.equal(await desktop.locator('.board[data-uid="tutorial-waiting"] .ready-dot').count(),0);
  await desktop.locator('[data-action="end"]').click();await step(desktop,3);assert.equal((await local(desktop)).tutorial.game.players[0].pots,1);
  await desktop.locator('.tutorial-coach [data-screen="lobby"]').click();assert.deepEqual((await local(desktop)).game,normal);

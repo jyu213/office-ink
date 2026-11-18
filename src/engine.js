@@ -42,7 +42,7 @@ function addPots(state, target, count, source) {
   if (source !== target && secretIndex >= 0) {
     player.secrets.splice(secretIndex, 1);
     damageHero(state, source, 3);
-    log(state, `${player.name}亮出「我有聊天记录」：挂锅被反制，对手受到 3 点伤害。`, target, 'secret');
+    log(state, `${player.name}亮出「我这有留痕」：挂锅被反制，对手受到 3 点伤害。`, target, 'secret');
     return;
   }
   const added = Math.min(MAX_POTS - player.pots, count);
@@ -247,7 +247,7 @@ export function applyAction(original, action) {
       const secretIndex = opponent.secrets.findIndex(secret => secret.id === 'cancel');
       if (secretIndex >= 0) {
         opponent.secrets.splice(secretIndex, 1);
-        log(state, `${opponent.name}亮出「这个会先取消」，话术效果被反制。`, other, 'secret');
+        log(state, `${opponent.name}亮出「会议改看文档」，话术效果被反制。`, other, 'secret');
       } else spellEffect(state, side, card, action, previousSpells);
       player.spellsPlayed++;
       // 先结算牺牲和伤害，离场的成长引擎不能被后续加成救回。
