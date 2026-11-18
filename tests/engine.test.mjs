@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, applyAction, legalActions, chooseAIAction, validSavedGame } from '../src/engine.js';
-import { CARD_MAP } from '../src/cards.js';
+import { CARDS, CARD_MAP } from '../src/cards.js';
 function fixture() {
   const state=createGame({seed:12});state.active=0;
   for(const player of state.players){player.hand=[];player.board=[];player.secrets=[];player.energy=8;player.maxEnergy=8;player.pots=0;player.armor=0;player.health=25;}
@@ -74,4 +74,19 @@ test('多套牌和难度均可完成完整对局，持续行动不会卡死',()=
   while(state.status==='playing'&&steps++<700){const action=chooseAIAction(state,state.active===0?'normal':difficulty);state=applyAction(state,action);for(const player of state.players){assert.ok(player.energy>=0);assert.ok(player.pots<=3);assert.ok(player.hand.length<=8);assert.ok(player.board.length<=5);}}
   assert.equal(state.status,'finished',`${deckId}/${difficulty} 对局未结束`);
  }
+});
+
+test('自组套牌只替换玩家的牌库，开局保留牌表和技能快照', () => {
+  const deck = { id: 'custom-test', name: '自己组的套牌', baseDeckId: 'shield', cards: CARDS.slice(0, 20).map(card => card.id) };
+  const game = createGame({ customDeck: deck, opponentDeckId: 'combo', seed: 23 });
+  assert.equal(game.deckId, 'shield');
+  assert.equal(game.players[0].deckId, 'shield');
+  assert.equal(game.players[1].deckId, 'combo');
+  assert.deepEqual([...game.players[0].deck, ...game.players[0].hand.map(card => card.id)].sort(), [...deck.cards].sort());
+  assert.equal(validSavedGame(game), true);
+  deck.cards.pop();
+  assert.equal(game.customDeck.cards.length, 20);
+  assert.throws(() => createGame({ customDeck: deck }), /20 张/);
+  assert.throws(() => createGame({ customDeck: { ...deck, cards: [...deck.cards.slice(0, 17), 'ack', 'ack', 'ack'] } }), /最多 2 张/);
+  assert.throws(() => createGame({ customDeck: { ...deck, cards: [...deck.cards, 'coin'] } }), /自组套牌/);
 });

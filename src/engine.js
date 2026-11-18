@@ -1,4 +1,5 @@
 import { CARD_MAP, DECKS, OPPONENTS } from './cards.js';
+import { validCustomDeck } from './custom-decks.js';
 export const RULES_VERSION = 2;
 export const MAX_HEALTH = 25;
 export const MAX_HAND = 8;
@@ -118,13 +119,19 @@ function startTurn(state, side) {
   if (state.players[0].health > 0) draw(state, side);
   settle(state);
 }
-export function createGame({ deckId = 'blame', difficulty = 'normal', opponentDeckId = 'random', seed = Date.now() >>> 0 } = {}) {
+export function createGame({ deckId = 'blame', difficulty = 'normal', opponentDeckId = 'random', customDeck = null, seed = Date.now() >>> 0 } = {}) {
+  if (customDeck !== null) {
+    if (!validCustomDeck(customDeck, { complete: true })) throw new Error('自组套牌需要 20 张牌，每张最多 2 张。');
+    deckId = customDeck.baseDeckId;
+  }
   if (!DECKS.some(deck => deck.id === deckId) || !OPPONENTS.some(item => item.id === difficulty) || opponentDeckId !== 'random' && !DECKS.some(deck => deck.id === opponentDeckId)) throw new Error('无效的套牌或对手');
   const state = { rulesVersion: RULES_VERSION, id: globalThis.crypto?.randomUUID?.() || `match-${Date.now()}-${seed}`, startedAt: Date.now(), seed: seed || 1, nextId: 1, difficulty, deckId, turn: 0, active: 0, status: 'playing', winner: null, log: [], players: [] };
+  if (customDeck) state.customDeck = clone(customDeck);
   const opponentDeck = opponentDeckId === 'random' ? DECKS[Math.floor(random(state) * DECKS.length)].id : opponentDeckId;
   for (const [side, id] of [deckId, opponentDeck].entries()) {
     const recipe = DECKS.find(deck => deck.id === id);
-    state.players.push({ name: side === 0 ? '你' : OPPONENTS.find(item => item.id === difficulty).name, deckId: id, health: MAX_HEALTH, armor: 0, energy: 0, maxEnergy: 0, pots: 0, fatigue: 0, spellsPlayed: 0, powerUsed: false, spellDiscount: 0, graveyard: [], deck: shuffle(state, recipe.cards.flatMap(card => [card, card])), hand: [], board: [], secrets: [] });
+    const cards = side === 0 && customDeck ? customDeck.cards : recipe.cards.flatMap(card => [card, card]);
+    state.players.push({ name: side === 0 ? '你' : OPPONENTS.find(item => item.id === difficulty).name, deckId: id, health: MAX_HEALTH, armor: 0, energy: 0, maxEnergy: 0, pots: 0, fatigue: 0, spellsPlayed: 0, powerUsed: false, spellDiscount: 0, graveyard: [], deck: shuffle(state, cards), hand: [], board: [], secrets: [] });
     draw(state, side, 4);
   }
   putInHand(state, 1, 'coin');
@@ -339,6 +346,7 @@ export function chooseAIAction(state, difficulty = state.difficulty) {
   return ranked[0]?.action || { type: 'end' };
 }
 export function validSavedGame(value) {
+  if (value?.customDeck && (!validCustomDeck(value.customDeck, { complete: true }) || value.deckId !== value.customDeck.baseDeckId || value.players?.[0]?.deckId !== value.deckId)) return false;
   return value?.rulesVersion === RULES_VERSION && value.status === 'playing' && Array.isArray(value.players) && value.players.length === 2 && DECKS.some(deck => deck.id === value.deckId) && OPPONENTS.some(item => item.id === value.difficulty) && value.players.every(player => DECKS.some(deck => deck.id === player.deckId) && Array.isArray(player.hand) && Array.isArray(player.board) && Array.isArray(player.deck) && Array.isArray(player.graveyard) && Array.isArray(player.secrets) && typeof player.powerUsed === 'boolean' && Number.isFinite(player.spellDiscount) && player.hand.every(card => CARD_MAP[card?.id]) && player.deck.every(id => CARD_MAP[id]) && player.board.every(card => CARD_MAP[card?.id]?.type === 'unit') && player.graveyard.every(id => CARD_MAP[id]?.type === 'unit') && player.secrets.every(card => CARD_MAP[card?.id]?.type === 'secret')) && [0, 1].includes(value.active);
 }
 export function restoreSavedGame(value) {

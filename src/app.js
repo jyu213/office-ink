@@ -1,6 +1,8 @@
 import { CARDS, CARD_MAP, DECKS, OPPONENTS, TYPE_LABELS } from './cards.js';
 import { createGame, applyAction, legalActions, chooseAIAction, validSavedGame, restoreSavedGame, cardCost, unitTags, MAX_HEALTH } from './engine.js';
-import { loadLocalData, saveSettings, saveGame, saveTutorial, saveDungeon } from './storage.js';
+import { loadLocalData, saveSettings, saveGame, saveTutorial, saveDungeon, saveCustomDeck, deleteCustomDeck, matchRecord } from './storage.js';
+import { CARD_COPY_LIMIT, CUSTOM_DECK_SIZE, countCards, validCustomDeck } from './custom-decks.js';
+import { deckBuilder } from './deck-builder.js';
 import { TUTORIAL_STEPS, createTutorial, advanceTutorial, applyTutorialAction, restoreTutorial, tutorialStep, tutorialActions } from './tutorial.js';
 import { applyDungeonAction, advanceDungeon, createDungeon, restoreDungeon } from './dungeon.js';
 import { dungeonPage, dungeonBattleBanner } from './dungeon-view.js';
@@ -10,7 +12,7 @@ import { actionGuide, handCue, boardCue } from './battle-guide.js';
 const root = document.querySelector('#app');
 const effectsLayer = document.querySelector('#battle-effects');
 const impactPause = () => new Promise(resolve => setTimeout(resolve, 430));
-const ui = { screen: 'lobby', deckId: 'blame', difficulty: 'normal', opponentDeckId: 'random', sound: false, match: null, battleMode: 'match', dungeon: null, dungeonDeckId: 'blame', matches: [], selected: null, modal: null, type: 'all', search: '', aiBusy: false, saving: false, storage: true, tutorial: null, tutorialProgress: null, tutorialCompleted: false, tutorialDismissed: false,
+const ui = { screen: 'lobby', deckId: 'blame', difficulty: 'normal', opponentDeckId: 'random', sound: false, match: null, battleMode: 'match', customDecks: [], customDeckId: '', deckDraft: null, deckFilters: null, deckDirty: false, dungeon: null, dungeonDeckId: 'blame', matches: [], selected: null, modal: null, type: 'all', search: '', aiBusy: false, saving: false, storage: true, tutorial: null, tutorialProgress: null, tutorialCompleted: false, tutorialDismissed: false,
   get game() { return this.tutorial?.game ?? (this.battleMode === 'dungeon' ? this.dungeon?.game : this.match); }
 };
 let aiTimer;
@@ -40,9 +42,11 @@ const paths = {
 const icon = (name, size = 20) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.spark}</svg>`;
 const esc = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const art = (index, extra = '') => `<div class="ink-art art-${index} ${extra}" aria-hidden="true"></div>`;
-const currentDeck = () => DECKS.find(deck => deck.id === ui.deckId);
+const selectedCustomDeck = () => ui.customDecks.find(deck => deck.id === ui.customDeckId);
+const currentDeck = () => DECKS.find(deck => deck.id === (selectedCustomDeck()?.baseDeckId ?? ui.deckId));
+const matchDeckName = game => game.customDeck?.name ?? DECKS.find(deck => deck.id === game.deckId).name;
 const currentOpponent = () => OPPONENTS.find(opponent => opponent.id === ui.difficulty);
-const settings = () => ({ deckId: ui.deckId, difficulty: ui.difficulty, opponentDeckId: ui.opponentDeckId, sound: ui.sound, tutorialCompleted: ui.tutorialCompleted, tutorialDismissed: ui.tutorialDismissed });
+const settings = () => ({ deckId: ui.deckId, customDeckId: ui.customDeckId, difficulty: ui.difficulty, opponentDeckId: ui.opponentDeckId, sound: ui.sound, tutorialCompleted: ui.tutorialCompleted, tutorialDismissed: ui.tutorialDismissed });
 function notify(message) {
   const toast = document.querySelector('#toast');
   toast.textContent = message; toast.classList.add('show');
@@ -62,7 +66,7 @@ function tone(kind = 'play') {
 function storageError() { if (ui.storage) notify('本地存档暂不可用，请勿关闭当前对局。'); ui.storage = false; }
 async function persistSettings() { try { await saveSettings(settings()); } catch { storageError(); } }
 function nav() {
-  const activeScreen = ui.screen === 'battle' ? (ui.battleMode === 'dungeon' ? 'dungeon' : 'lobby') : ui.screen;
+  const activeScreen = ui.screen === 'battle' ? (ui.battleMode === 'dungeon' ? 'dungeon' : 'lobby') : ui.screen === 'deck-builder' ? 'lobby' : ui.screen;
   return `<header class="topbar"><button class="brand" data-action="route" data-screen="lobby" aria-label="我知道你着急，但是你先别急，返回主页"><span class="seal">班</span><span><strong class="brand-name"><span>我知道你着急，</span><span>但是你先别急</span></strong><small>职 场 水 墨 卡 牌</small></span></button><nav aria-label="主导航">${[['lobby','swords','对战'],['dungeon','leaf','副本'],['cards','book','藏牌阁'],['history','scroll','对局录']].map(([screen, symbol, title]) => `<button data-action="route" data-screen="${screen}" class="nav-item ${activeScreen === screen ? 'active' : ''}" ${activeScreen === screen ? 'aria-current="page"' : ''}>${icon(symbol, 17)}<span>${title}</span></button>`).join('')}</nav><div class="top-actions"><button class="text-button rules-button" data-action="rules" aria-label="玩法教学">${icon('help',17)}<span>玩法教学</span></button><span class="top-divider"></span><button class="icon-button" data-action="sound" aria-label="${ui.sound ? '关闭' : '开启'}音效" aria-pressed="${ui.sound}">${icon(ui.sound ? 'sound' : 'mute',18)}</button></div></header>`;
 }
 function cardMarkup(card, { mode = 'collection', instance = null, action = 'inspect', selected = false, playable = false, target = false, side = null, cost = card.cost, availability = null } = {}) {
@@ -74,10 +78,21 @@ function cardMarkup(card, { mode = 'collection', instance = null, action = 'insp
   const ability = { summonGrow: '新人入场 · 成长', spellGrow: '话术后 · 成长', spellPing: '话术后 · 补刀', deathGrow: '同伴离场 · 成长', deathToken: '离场 · 召唤', attackPot: '攻击 · 挂锅', endPot: '结束 · 挂锅', deathPot: '离场 · 挂锅', startArmor: '回合 · 护盾' }[card.effect];
   return `<button class="game-card ${mode} type-${card.type}${guard ? ' guard-unit' : ''} ${selected ? 'selected' : ''} ${playable ? 'playable' : ''} ${target ? 'targetable' : ''} ${unit && !instance.ready && side === 0 ? 'exhausted' : ''} ${availability ? `cue-${availability.state}` : ''}" data-action="${action}" data-card="${card.id}" ${fx ? `data-fx="${esc(fx)}"` : ''} ${instance ? `data-uid="${instance.uid}"` : ''} ${side !== null ? `data-side="${side}"` : ''} title="${esc(availability?.reason || card.text)}" aria-label="${esc(card.name)}，${cost}精力，${unit ? `${instance.attack}压迫，${instance.health}底气，` : ''}${esc(card.text)}${guard ? '，拦截：必须先攻击此立场' : ''}${availability?`，${esc(availability.reason)}`:''}" ${selected ? 'aria-pressed="true"' : ''}><div class="card-inner"><span class="card-cost ${cost < card.cost ? 'discounted' : ''}" title="${cost < card.cost ? `原费用 ${card.cost}，预演减费` : '精力费用'}">${cost}</span><span class="card-kind">${TYPE_LABELS[card.type]}</span>${art(card.art)}<div class="card-copy"><strong class="card-name">${card.name}</strong>${mode !== 'board' ? `<p class="card-description">${card.text}</p>` : `<span class="board-keyword">${instance.silenced ? '已沉默' : instance.frozen ? '流程暂停' : tags.join(' · ') || ability || (instance.ready ? '可以施压' : '稍作准备')}</span>`}${tags.length && mode !== 'board' && card.type !== 'unit' ? `<span class="card-keyword">${tags.join(' · ')}</span>` : ''}</div>${guard ? `<span class="guard-seal" aria-hidden="true">${icon('shield',11)}拦截</span>` : ''}${card.type === 'unit' ? `<div class="card-stats"><span class="attack-stat" title="压迫（攻击力）">${icon('swords',13)}${unit ? instance.attack : card.attack}</span><span class="health-stat ${unit && instance.health < instance.maxHealth ? 'hurt' : ''}" title="底气（生命值）">${icon('shield',13)}${unit ? instance.health : card.health}</span></div>` : '<span class="card-ornament">✦</span>'}</div>${availability?.label?`<span class="card-action-badge">${icon(availability.state==='attackable'?'swords':availability.state==='target'?'chevron':availability.state==='playable'?'spark':'clock',10)}${availability.label}</span>`:''}${availability?.canAttack && side === 0 ? '<span class="ready-dot" title="可以攻击"></span>' : ''}</button>`;
 }
+function customDeckChoice(deck) {
+  const options = ui.customDecks.map(item => `<option value="${item.id}" ${item === deck ? 'selected' : ''}>${esc(item.name)} · ${item.cards.length}/${CUSTOM_DECK_SIZE}</option>`).join('');
+  return `<div class="custom-deck-choice">
+    ${options ? `<label class="custom-deck-picker"><span>我的套牌</span><select id="custom-deck"><option value="" ${deck ? '' : 'selected'}>使用预组</option>${options}</select></label>` : ''}
+    <button class="secondary-button" data-action="builder-new">${options ? '新建套牌' : '自组套牌'}</button>
+    ${deck ? '<button class="underlined-button" data-action="builder-edit">编辑所选套牌</button>' : ''}
+  </div>`;
+}
+
 function lobby() {
   const wins = ui.matches.filter(match => match.winner === 0).length;
   const hasSave = validSavedGame(ui.match);
-  return `<main data-key="lobby" class="lobby page-enter"><section class="hero-section"><div class="hero-copy"><div class="eyebrow"><span></span>职场如江湖 · 出牌见真章</div><h1>话别说满，<br>牌要打<span class="red-word">狠</span>。</h1><p class="hero-description">一句「收到，已同步」藏锋芒，一声「对齐」起风浪。<br>把熟悉的职场话术，打成你的制胜一手。</p><div class="hero-meta"><span>${icon('swords',15)}单人人机对战</span><i></i><span>${icon('clock',15)}一局约 10 分钟</span><i></i><span>${icon('leaf',15)}无须联网</span></div><div class="hero-link"><a class="primary-button mobile-match-link" href="#match-setup">${icon('swords',16)}选择对手 ${icon('arrow',16)}</a><button class="dungeon-entry" data-action="route" data-screen="dungeon">${icon('leaf',16)}${ui.dungeon&&ui.dungeon.status!=='cleared'?'继续副本':'挑战副本'} ${icon('arrow',15)}</button><button data-action="tutorial-start" class="tutorial-entry">${icon('book',16)}${ui.tutorialProgress?'继续新手教学':ui.tutorialCompleted?'重温新手教学':'新手教学，带你打一局'} ${icon('arrow',16)}</button><button data-action="rules" class="underlined-button">查看规则</button></div></div><div class="hero-showcase" aria-label="水墨卡牌展示"><div class="ink-circle"></div><span class="vertical-note">笑里藏刀 · 纸上过招</span><div class="showcase-card showcase-left">${cardMarkup(CARD_MAP.leader, { mode: 'showcase' })}</div><div class="showcase-card showcase-right">${cardMarkup(CARD_MAP.supplement, { mode: 'showcase' })}</div><div class="showcase-card showcase-center">${cardMarkup(CARD_MAP.follow, { mode: 'showcase' })}</div><span class="showcase-seal">以和<br>为贵</span><span class="showcase-caption">山水有意，话术无情。</span></div></section><section class="setup-section" id="match-setup" tabindex="-1"><div class="section-caption"><span class="section-index">壹</span><h2>今日，和谁过招？</h2><p>选个对手，试试你的职场生存之道。</p></div><div class="opponent-grid">${OPPONENTS.map((opponent,index) => `<button class="opponent-card ${ui.difficulty === opponent.id ? 'chosen' : ''}" data-action="opponent" data-value="${opponent.id}" aria-pressed="${ui.difficulty === opponent.id}"><span class="opponent-avatar opponent-${index}">${opponent.seal}</span><span class="opponent-info"><span class="opponent-title">${opponent.title}<span class="difficulty-dots" aria-label="${index+1}星难度">${'●'.repeat(index+1)}${'○'.repeat(2-index)}</span></span><strong>${opponent.name}</strong><small>${opponent.description}</small></span><span class="selection-mark">${ui.difficulty === opponent.id ? '✓' : ''}</span></button>`).join('')}</div><div class="battle-preparation"><div class="deck-choice"><span class="muted-label">套牌流派</span><div class="deck-tabs" role="group" aria-label="选择套牌">${DECKS.map(deck => `<button class="deck-tab ${ui.deckId === deck.id ? 'chosen' : ''}" data-action="deck" data-value="${deck.id}" aria-pressed="${ui.deckId === deck.id}">${deck.name}<small>${deck.style}</small></button>`).join('')}</div><p>${currentDeck().description}</p><div class="deck-power-summary"><b>${currentDeck().power.cost} 精力 · ${currentDeck().power.name}</b><span>${currentDeck().power.text}</span></div><button class="underlined-button" data-action="deck-details">看看这套牌怎么打 ${icon('arrow',14)}</button></div><div class="match-options"><label class="opponent-deck-label" for="opponent-deck">对手流派<select id="opponent-deck"><option value="random" ${ui.opponentDeckId==='random'?'selected':''}>随机流派</option>${DECKS.map(deck=>`<option value="${deck.id}" ${ui.opponentDeckId===deck.id?'selected':''}>${deck.name}</option>`).join('')}</select></label><div class="start-actions">${hasSave ? `<button class="resume-button" data-action="resume">${icon('clock',16)}继续第 ${Math.ceil(ui.match.turn/2)} 回合</button>` : ''}<button class="primary-button start-button" data-action="start">${icon('swords',19)}开始对局${icon('arrow',20)}</button><span class="start-caption">${hasSave ? '新开对局将替换当前存档' : '20 张套牌 · 专属技能 · 一场职场交锋'}</span></div></div></div></section><section class="bottom-strip"><div class="philosophy"><span class="small-seal">招</span><p>甩锅有来回，连击有章法。<small>每一句熟悉的话，都有不一样的打法。</small></p></div><div class="lobby-stat"><strong>${CARDS.length}</strong><span>张水墨卡牌</span></div><div class="lobby-stat"><strong>${ui.matches.length}</strong><span>场江湖过招</span></div><div class="lobby-stat"><strong>${ui.matches.length ? Math.round(wins/ui.matches.length*100)+'<em>%</em>' : '—'}</strong><span>你的胜率</span></div></section></main>`;
+  const custom = selectedCustomDeck();
+  const missing = custom ? CUSTOM_DECK_SIZE - custom.cards.length : 0;
+  return `<main data-key="lobby" class="lobby page-enter"><section class="hero-section"><div class="hero-copy"><div class="eyebrow"><span></span>职场如江湖 · 出牌见真章</div><h1>话别说满，<br>牌要打<span class="red-word">狠</span>。</h1><p class="hero-description">一句「收到，已同步」藏锋芒，一声「对齐」起风浪。<br>把熟悉的职场话术，打成你的制胜一手。</p><div class="hero-meta"><span>${icon('swords',15)}单人人机对战</span><i></i><span>${icon('clock',15)}一局约 10 分钟</span><i></i><span>${icon('leaf',15)}无须联网</span></div><div class="hero-link"><a class="primary-button mobile-match-link" href="#match-setup">${icon('swords',16)}选择对手 ${icon('arrow',16)}</a><button class="dungeon-entry" data-action="route" data-screen="dungeon">${icon('leaf',16)}${ui.dungeon&&ui.dungeon.status!=='cleared'?'继续副本':'挑战副本'} ${icon('arrow',15)}</button><button data-action="tutorial-start" class="tutorial-entry">${icon('book',16)}${ui.tutorialProgress?'继续新手教学':ui.tutorialCompleted?'重温新手教学':'新手教学，带你打一局'} ${icon('arrow',16)}</button><button data-action="rules" class="underlined-button">查看规则</button></div></div><div class="hero-showcase" aria-label="水墨卡牌展示"><div class="ink-circle"></div><span class="vertical-note">笑里藏刀 · 纸上过招</span><div class="showcase-card showcase-left">${cardMarkup(CARD_MAP.leader, { mode: 'showcase' })}</div><div class="showcase-card showcase-right">${cardMarkup(CARD_MAP.supplement, { mode: 'showcase' })}</div><div class="showcase-card showcase-center">${cardMarkup(CARD_MAP.follow, { mode: 'showcase' })}</div><span class="showcase-seal">以和<br>为贵</span><span class="showcase-caption">山水有意，话术无情。</span></div></section><section class="setup-section" id="match-setup" tabindex="-1"><div class="section-caption"><span class="section-index">壹</span><h2>今日，和谁过招？</h2><p>选个对手，试试你的职场生存之道。</p></div><div class="opponent-grid">${OPPONENTS.map((opponent,index) => `<button class="opponent-card ${ui.difficulty === opponent.id ? 'chosen' : ''}" data-action="opponent" data-value="${opponent.id}" aria-pressed="${ui.difficulty === opponent.id}"><span class="opponent-avatar opponent-${index}">${opponent.seal}</span><span class="opponent-info"><span class="opponent-title">${opponent.title}<span class="difficulty-dots" aria-label="${index+1}星难度">${'●'.repeat(index+1)}${'○'.repeat(2-index)}</span></span><strong>${opponent.name}</strong><small>${opponent.description}</small></span><span class="selection-mark">${ui.difficulty === opponent.id ? '✓' : ''}</span></button>`).join('')}</div><div class="battle-preparation"><div class="deck-choice"><span class="muted-label">套牌流派</span><div class="deck-tabs" role="group" aria-label="选择套牌">${DECKS.map(deck => `<button class="deck-tab ${!custom && ui.deckId === deck.id ? 'chosen' : ''}" data-action="deck" data-value="${deck.id}" aria-pressed="${!custom && ui.deckId === deck.id}">${deck.name}<small>${deck.style}</small></button>`).join('')}</div>${customDeckChoice(custom)}<p>${custom ? `${esc(custom.name)} · ${custom.cards.length}/${CUSTOM_DECK_SIZE} 张` : currentDeck().description}</p><div class="deck-power-summary"><b>${currentDeck().power.cost} 精力 · ${currentDeck().power.name}</b><span>${currentDeck().power.text}</span></div><button class="underlined-button" data-action="deck-details">${custom ? '查看组成' : '看看这套牌怎么打'} ${icon('arrow',14)}</button></div><div class="match-options"><label class="opponent-deck-label" for="opponent-deck">对手流派<select id="opponent-deck"><option value="random" ${ui.opponentDeckId==='random'?'selected':''}>随机流派</option>${DECKS.map(deck=>`<option value="${deck.id}" ${ui.opponentDeckId===deck.id?'selected':''}>${deck.name}</option>`).join('')}</select></label><div class="start-actions">${hasSave ? `<button class="resume-button" data-action="resume">${icon('clock',16)}继续第 ${Math.ceil(ui.match.turn/2)} 回合</button>` : ''}<button class="primary-button start-button" data-action="start" ${missing ? 'disabled' : ''}>${icon('swords',19)}开始对局${icon('arrow',20)}</button><span class="start-caption">${missing ? `自组套牌还差 ${missing} 张才可开局` : hasSave ? '新开对局将替换当前存档' : '20 张套牌 · 专属技能 · 一场职场交锋'}</span></div></div></div></section><section class="bottom-strip"><div class="philosophy"><span class="small-seal">招</span><p>甩锅有来回，连击有章法。<small>每一句熟悉的话，都有不一样的打法。</small></p></div><div class="lobby-stat"><strong>${CARDS.length}</strong><span>张水墨卡牌</span></div><div class="lobby-stat"><strong>${ui.matches.length}</strong><span>场江湖过招</span></div><div class="lobby-stat"><strong>${ui.matches.length ? Math.round(wins/ui.matches.length*100)+'<em>%</em>' : '—'}</strong><span>你的胜率</span></div></section></main>`;
 }
 function heroMarkup(side, actions) {
   const player = ui.game.players[side];
@@ -86,7 +101,7 @@ function heroMarkup(side, actions) {
   const guarded = side === 1 && !isTarget && ui.selected?.type === 'attack' && player.board.some(unit => unitTags(unit).includes('guard'));
   const name = side === 0 ? '你 · 打工侠' : player.name;
   const active = ui.game.active === side && ui.game.status === 'playing';
-  return `<div class="hero-row side-${side}"><button class="hero-identity ${isTarget ? 'targetable' : ''} ${active ? 'active-hero' : ''} ${guarded ? 'guarded' : ''}" data-fx="hero-${side}" data-action="target" data-side="${side}" data-uid="hero" title="${DECKS.find(deck=>deck.id===player.deckId).power.name}：${DECKS.find(deck=>deck.id===player.deckId).power.text}" aria-label="${name}，心态${Math.max(0,player.health)}，护盾${player.armor}${isTarget ? '，点击选择目标' : guarded ? '，先攻击拦截立场' : ''}">${isTarget ? `<span class="hero-target-label">${ui.selected?.type==='attack'?'点击攻击对手':'选对手为目标'}</span>` : guarded ? '<span class="hero-guarded-label">先打拦截</span>' : ''}<span class="hero-avatar">${side === 0 ? '侠' : OPPONENTS.find(item => item.id === ui.game.difficulty).seal}</span><span class="hero-identity-copy"><strong>${name}<small>${DECKS.find(deck => deck.id === player.deckId).name}</small></strong><span class="health-bar"><i style="width:${Math.min(100,Math.max(0,player.health)/maxHealth*100)}%"></i></span><span class="hero-vitals"><b>${Math.max(0,player.health)}</b> / ${maxHealth} 心态 ${player.armor ? `<span class="armor-counter">${icon('shield',12)}${player.armor}</span>` : ''}</span></span></button><div class="hero-resources"><span class="energy-count">${player.energy}<small> / ${player.maxEnergy}</small><em>精力</em></span><div class="energy-dots">${Array.from({length: Math.max(1,player.maxEnergy)},(_,index)=>`<i class="${index<player.energy?'filled':''}"></i>`).join('')}</div></div><div class="hero-pots" data-fx="pots-${side}">${Array.from({length:3},(_,index)=>`<span class="pot-icon ${index<player.pots?'full':''}" title="${index<player.pots?'回合结束造成2点伤害':'空锅位'}">${icon('flame',17)}</span>`).join('')}<small>${player.pots ? `${player.pots} 个待处理的锅` : '无锅一身轻'}</small></div><div class="deck-pile" title="剩余牌库"><span>牌</span><small>${player.deck.length}</small></div></div>`;
+  return `<div class="hero-row side-${side}"><button class="hero-identity ${isTarget ? 'targetable' : ''} ${active ? 'active-hero' : ''} ${guarded ? 'guarded' : ''}" data-fx="hero-${side}" data-action="target" data-side="${side}" data-uid="hero" title="${DECKS.find(deck=>deck.id===player.deckId).power.name}：${DECKS.find(deck=>deck.id===player.deckId).power.text}" aria-label="${name}，心态${Math.max(0,player.health)}，护盾${player.armor}${isTarget ? '，点击选择目标' : guarded ? '，先攻击拦截立场' : ''}">${isTarget ? `<span class="hero-target-label">${ui.selected?.type==='attack'?'点击攻击对手':'选对手为目标'}</span>` : guarded ? '<span class="hero-guarded-label">先打拦截</span>' : ''}<span class="hero-avatar">${side === 0 ? '侠' : OPPONENTS.find(item => item.id === ui.game.difficulty).seal}</span><span class="hero-identity-copy"><strong>${name}<small>${side === 0 ? esc(matchDeckName(ui.game)) : DECKS.find(deck => deck.id === player.deckId).name}</small></strong><span class="health-bar"><i style="width:${Math.min(100,Math.max(0,player.health)/maxHealth*100)}%"></i></span><span class="hero-vitals"><b>${Math.max(0,player.health)}</b> / ${maxHealth} 心态 ${player.armor ? `<span class="armor-counter">${icon('shield',12)}${player.armor}</span>` : ''}</span></span></button><div class="hero-resources"><span class="energy-count">${player.energy}<small> / ${player.maxEnergy}</small><em>精力</em></span><div class="energy-dots">${Array.from({length: Math.max(1,player.maxEnergy)},(_,index)=>`<i class="${index<player.energy?'filled':''}"></i>`).join('')}</div></div><div class="hero-pots" data-fx="pots-${side}">${Array.from({length:3},(_,index)=>`<span class="pot-icon ${index<player.pots?'full':''}" title="${index<player.pots?'回合结束造成2点伤害':'空锅位'}">${icon('flame',17)}</span>`).join('')}<small>${player.pots ? `${player.pots} 个待处理的锅` : '无锅一身轻'}</small></div><div class="deck-pile" title="剩余牌库"><span>牌</span><small>${player.deck.length}</small></div></div>`;
 }
 function availableActions() { return ui.tutorial ? tutorialActions(ui.tutorial) : legalActions(ui.game); }
 function selectionActions() {
@@ -102,10 +117,11 @@ function powerPanel(isMyTurn, actions) {
   const available=isMyTurn&&actions.some(action=>action.type==='power');
   return `<div class="ability-panel"><button class="ability-button ${player.powerUsed?'used':''}" data-action="power" data-fx="player-power" ${available?'':'disabled'} title="${power.text}"><span>${power.cost}</span><strong>${power.name}<small>${player.powerUsed?'本回合已用':'每回合一次'}</small></strong>${icon('spark',16)}</button><p>${power.text}${player.spellDiscount?'<b>预演生效：下一张话术 -1 精力</b>':''}</p><button class="grave-button" data-action="grave">${icon('scroll',15)}交接区 <b>${player.graveyard.length}</b></button></div>`;
 }
-function deckDetails(deck) {
-  const cards=deck.cards.map(id=>CARD_MAP[id]);
-  const average=(cards.reduce((sum,card)=>sum+card.cost,0)/cards.length).toFixed(1);
-  return `<span class="eyebrow">${deck.style}</span><h2 id="modal-title">${deck.name}</h2><p class="modal-lead">${deck.description}</p><div class="deck-detail-power"><strong>${deck.power.cost} 精力 · ${deck.power.name}</strong><p>${deck.power.text} 每回合一次。</p></div><div class="deck-detail-meta"><span>20 张 · 每种 2 张</span><span>平均费用 ${average}</span></div><div class="deck-card-list">${cards.map(card=>`<button data-action="inspect" data-card="${card.id}"><span>${card.cost}</span><strong>${card.name}</strong><small>${TYPE_LABELS[card.type]} ×2</small></button>`).join('')}</div>`;
+function deckDetails(deck, custom) {
+  const cards = custom?.cards ?? deck.cards.flatMap(id => [id, id]);
+  const counts = countCards(cards);
+  const average = cards.length ? (cards.reduce((sum,id) => sum + CARD_MAP[id].cost, 0) / cards.length).toFixed(1) : '—';
+  return `<span class="eyebrow">${custom ? '自组套牌' : deck.style}</span><h2 id="modal-title">${esc(custom?.name ?? deck.name)}</h2>${custom ? '' : `<p class="modal-lead">${deck.description}</p>`}<div class="deck-detail-power"><strong>${deck.power.cost} 精力 · ${deck.power.name}</strong><p>${deck.power.text} 每回合一次。</p></div><div class="deck-detail-meta"><span>${cards.length} 张${custom ? '' : ' · 每种 2 张'}</span><span>平均费用 ${average}</span></div><div class="deck-card-list">${[...counts].map(([id,count])=>`<button data-action="inspect" data-card="${id}"><span>${CARD_MAP[id].cost}</span><strong>${CARD_MAP[id].name}</strong><small>${TYPE_LABELS[CARD_MAP[id].type]} ×${count}</small></button>`).join('')}</div>`;
 }
 function graveDetails() {
   const ids=ui.game.players[0].graveyard.slice().reverse();
@@ -229,7 +245,9 @@ function modal() {
   if (ui.modal.type === 'rules') content=rulesContent();
   if (ui.modal.type === 'welcome') content=tutorialWelcome();
   if (ui.modal.type === 'tutorial-complete') content=tutorialComplete();
-  if (ui.modal.type === 'deck') content=deckDetails(DECKS.find(deck=>deck.id===ui.modal.deck));
+  if (ui.modal.type === 'deck') content=deckDetails(currentDeck(), selectedCustomDeck());
+  if (ui.modal.type === 'builder-discard') content=`<h2 id="modal-title">放弃未保存的修改？</h2><div class="dialog-actions"><button class="secondary-button" data-action="close">继续编辑</button><button class="primary-button" data-action="builder-discard">放弃修改</button></div>`;
+  if (ui.modal.type === 'builder-delete') content=`<h2 id="modal-title">删除「${esc(ui.deckDraft.name)}」？</h2><p class="modal-lead">删除后无法从套牌列表恢复。</p><div class="dialog-actions"><button class="secondary-button" data-action="close">保留套牌</button><button class="primary-button" data-action="builder-delete" ${ui.saving?'disabled':''}>删除套牌</button></div>`;
   if (ui.modal.type === 'grave') content=graveDetails();
   if (ui.modal.type === 'inspect') {
     const card=CARD_MAP[ui.modal.card];
@@ -239,7 +257,7 @@ function modal() {
   if (ui.modal.type === 'replace') content=`<span class="eyebrow">另起一局</span><h2 id="modal-title">这一局，还没分出胜负。</h2><p class="modal-lead">新开对局会将当前对局记为落败，并替换存档。也可以继续刚才的交锋。</p><div class="dialog-actions"><button class="secondary-button" data-action="resume">继续当前对局</button><button class="primary-button" data-action="force-start">重新开局</button></div>`;
   if (ui.modal.type === 'result') {
     const won=ui.game.winner===0;const draw=ui.game.winner==='draw';
-    content=`<div class="result-content"><span class="big-result-seal ${won?'won':''}">${draw?'和':won?'胜':'负'}</span><span class="eyebrow">${Math.ceil(ui.game.turn/2)} 回合 · ${DECKS.find(deck=>deck.id===ui.game.deckId).name}</span><h2 id="modal-title">${draw?'不分伯仲，改日再战。':won?'这场交锋，你拿捏了。':'胜败常事，下班再战。'}</h2><p>${draw?'两边的心态都归了零，这份默契也是难得。':won?'话留三分，牌尽全力。今天的锅，终于没有落在你头上。':'锅可以再甩，牌可以重来。下一局，试试不一样的打法。'}</p><div class="dialog-actions"><button class="secondary-button" data-action="result-lobby">回到江湖</button><button class="primary-button" data-action="again">再过一招 ${icon('arrow',17)}</button></div><small>${ui.storage?'本局战绩已保存于当前浏览器':'本局未能保存，请检查浏览器存储权限'}</small></div>`;
+    content=`<div class="result-content"><span class="big-result-seal ${won?'won':''}">${draw?'和':won?'胜':'负'}</span><span class="eyebrow">${Math.ceil(ui.game.turn/2)} 回合 · ${esc(matchDeckName(ui.game))}</span><h2 id="modal-title">${draw?'不分伯仲，改日再战。':won?'这场交锋，你拿捏了。':'胜败常事，下班再战。'}</h2><p>${draw?'两边的心态都归了零，这份默契也是难得。':won?'话留三分，牌尽全力。今天的锅，终于没有落在你头上。':'锅可以再甩，牌可以重来。下一局，试试不一样的打法。'}</p><div class="dialog-actions"><button class="secondary-button" data-action="result-lobby">回到江湖</button><button class="primary-button" data-action="again">再过一招 ${icon('arrow',17)}</button></div><small>${ui.storage?'本局战绩已保存于当前浏览器':'本局未能保存，请检查浏览器存储权限'}</small></div>`;
   }
   if (ui.modal.type === 'log') content=`<h2 id="modal-title">过招实录</h2><div class="modal-log">${ui.game.log.slice().reverse().map(entry=>`<p>${esc(entry.text)}</p>`).join('')}</div>`;
   return `<div data-key="modal-${ui.modal.type}" class="modal-backdrop" data-action="backdrop"><section class="modal ${ui.modal.type==='inspect'?'inspect-modal':''}" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1"><button class="modal-close icon-button" data-action="close" aria-label="关闭弹窗">${icon('close',21)}</button>${content}</section></div>`;
@@ -247,7 +265,7 @@ function modal() {
 function render() {
   const previousModal = root.querySelector('.modal');
   const focused = document.activeElement;
-  const view = ui.screen==='battle'&&ui.game ? battle() : ui.screen==='dungeon' ? dungeonPage(ui.dungeon,ui.dungeonDeckId,ui.saving,icon,art) : ui.screen==='cards' ? collection() : ui.screen==='history' ? history() : lobby();
+  const view = ui.screen==='battle'&&ui.game ? battle() : ui.screen==='dungeon' ? dungeonPage(ui.dungeon,ui.dungeonDeckId,ui.saving,icon,art) : ui.screen==='cards' ? collection() : ui.screen==='history' ? history() : ui.screen==='deck-builder' ? deckBuilder(ui.deckDraft, ui.deckFilters, { editing:ui.customDecks.some(deck=>deck.id===ui.deckDraft.id), saving:ui.saving, icon, esc }) : lobby();
   const markup=nav()+view+`<footer class="site-footer"><span>我知道你着急，但是你先别急 <i>·</i> 职场如江湖</span><span>${ui.storage?'落笔即存档':'本地存储不可用'} <i>·</i> 纯粹过招，不必氪金</span></footer>`+modal();
   renderMarkup(root, markup);
   if (ui.screen !== 'battle' || ui.modal) effectsLayer.replaceChildren();
@@ -266,6 +284,11 @@ function render() {
 }
 function showModal(value) { ui.modal=value; render(); }
 function route(screen) {
+  if (ui.screen === 'deck-builder' && screen !== 'deck-builder') {
+    if (ui.saving) return;
+    if (ui.deckDirty) { showModal({type:'builder-discard', screen}); return; }
+    ui.deckDraft = null;
+  }
   if (screen !== 'battle') {
     if (ui.tutorial) leaveTutorial();
     ui.battleMode='match';
@@ -273,7 +296,7 @@ function route(screen) {
   clearTimeout(aiTimer);ui.aiBusy=false;ui.selected=null;ui.modal=null;ui.screen=screen;render();window.scrollTo({top:0,behavior:'instant'});
 }
 function refreshMatch(game) {
-  const record={id:game.id,startedAt:game.startedAt,endedAt:Date.now(),deckId:game.deckId,difficulty:game.difficulty,winner:game.winner,turns:Math.ceil(game.turn/2)};
+  const record=matchRecord(game);
   ui.matches=ui.matches.filter(match=>match.id!==game.id).concat(record);
 }
 async function commit(action) {
@@ -339,8 +362,67 @@ function queueAI() {
     catch { notify('对手重新整理了一下思路。');void commit({type:'end'}); }
   },ui.game.difficulty==='hard'?800:600);
 }
-async function begin(force=false) {
+function openDeckBuilder(deck) {
   if (ui.saving) return;
+  ui.deckDraft = deck ? structuredClone(deck) : {
+    id: globalThis.crypto?.randomUUID?.() || `deck-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    name: '自组套牌', baseDeckId: ui.deckId, cards: []
+  };
+  ui.deckFilters = { owned: false, search: '', type: '' };
+  ui.deckDirty = false;
+  route('deck-builder');
+}
+function changeDeckCard(id, add) {
+  if (!ui.deckDraft || ui.saving) return;
+  const { cards } = ui.deckDraft;
+  const index = cards.lastIndexOf(id);
+  if (add) {
+    if (cards.length >= CUSTOM_DECK_SIZE || (countCards(cards).get(id) || 0) >= CARD_COPY_LIMIT) return;
+    cards.push(id);
+  } else {
+    if (index === -1) return;
+    cards.splice(index, 1);
+  }
+  ui.deckDirty = true;
+  render();
+}
+async function saveDeckDraft(remove = false) {
+  if (ui.saving || !ui.deckDraft) return;
+  const deck = {...ui.deckDraft, name: ui.deckDraft.name.trim()};
+  if (!remove && !validCustomDeck(deck)) {
+    notify('请输入套牌名称，并检查卡牌数量。');
+    root.querySelector('#builder-name')?.focus();
+    return;
+  }
+  ui.saving = true;
+  render();
+  try {
+    if (remove) {
+      await deleteCustomDeck(deck.id);
+      ui.customDecks = ui.customDecks.filter(item => item.id !== deck.id);
+      if (ui.customDeckId === deck.id) ui.customDeckId = '';
+    } else {
+      await saveCustomDeck(deck);
+      const index = ui.customDecks.findIndex(item => item.id === deck.id);
+      if (index === -1) ui.customDecks.push(deck);
+      else ui.customDecks[index] = deck;
+      ui.customDeckId = deck.id;
+    }
+    ui.deckDirty = false;
+    await persistSettings();
+  } catch {
+    notify(remove ? '删除失败，请重试。' : '自组套牌保存失败，请重试。');
+    return;
+  } finally {
+    ui.saving = false;
+    render();
+  }
+  route('lobby');
+  root.querySelector('.custom-deck-choice')?.scrollIntoView({block:'center'});
+}
+async function begin(force=false, customDeck=selectedCustomDeck() ?? null) {
+  if (ui.saving) return;
+  if (customDeck && !validCustomDeck(customDeck, {complete:true})) { notify('请先把自组套牌补到 20 张。'); return; }
   if (validSavedGame(ui.match)&&!force) {showModal({type:'replace'});return;}
   clearTimeout(aiTimer);ui.saving=true;
   if (validSavedGame(ui.match)&&force) {
@@ -348,7 +430,7 @@ async function begin(force=false) {
     try {await saveGame(abandoned);refreshMatch(abandoned);} catch {storageError();}
   }
   ui.battleMode='match';
-  ui.match=createGame({deckId:ui.deckId,difficulty:ui.difficulty,opponentDeckId:ui.opponentDeckId});ui.screen='battle';ui.selected=null;ui.modal=null;
+  ui.match=createGame({deckId:ui.deckId,difficulty:ui.difficulty,opponentDeckId:ui.opponentDeckId,customDeck});ui.screen='battle';ui.selected=null;ui.modal=null;
   try {await saveGame(ui.match);} catch {storageError();}
   ui.saving=false;render();window.scrollTo({top:0,behavior:'instant'});tone();
 }
@@ -393,15 +475,31 @@ root.addEventListener('click',event=>{
     case 'tutorial-later':closeModal();break;
     case 'tutorial-summary':showModal({type:'tutorial-complete'});break;
     case 'tutorial-finish':finishTutorial();break;
-    case 'deck-details':showModal({type:'deck',deck:ui.deckId});break;
+    case 'deck-details':showModal({type:'deck'});break;
+    case 'builder-new':openDeckBuilder();break;
+    case 'builder-edit':openDeckBuilder(selectedCustomDeck());break;
+    case 'builder-add':changeDeckCard(button.dataset.card,true);break;
+    case 'builder-remove':changeDeckCard(button.dataset.card,false);break;
+    case 'builder-view':
+      ui.deckFilters={owned:!ui.deckFilters.owned,search:'',type:''};render();break;
+    case 'builder-fill':
+      if (!ui.saving && !ui.deckDraft.cards.length) {
+        ui.deckDraft.cards=DECKS.find(deck=>deck.id===ui.deckDraft.baseDeckId).cards.flatMap(id=>[id,id]);
+        ui.deckDirty=true;render();
+      }
+      break;
+    case 'builder-save':void saveDeckDraft();break;
+    case 'builder-confirm-delete':showModal({type:'builder-delete'});break;
+    case 'builder-delete':void saveDeckDraft(true);break;
+    case 'builder-discard':ui.deckDirty=false;route(ui.modal.screen);break;
     case 'grave':showModal({type:'grave'});break;
     case 'power':if(ui.game?.active===0)void commit({type:'power'});break;
     case 'sound':ui.sound=!ui.sound;void persistSettings();tone();render();notify(ui.sound?'音效已开启':'音效已关闭');break;
     case 'opponent':ui.difficulty=button.dataset.value;void persistSettings();render();break;
-    case 'deck':ui.deckId=button.dataset.value;void persistSettings();render();break;
+    case 'deck':ui.deckId=button.dataset.value;ui.customDeckId='';void persistSettings();render();break;
     case 'start':void begin();break;
     case 'force-start':void begin(true);break;
-    case 'again':ui.deckId=ui.game.deckId;ui.difficulty=ui.game.difficulty;void begin(true);break;
+    case 'again':ui.deckId=ui.game.deckId;ui.difficulty=ui.game.difficulty;void begin(true, ui.game.customDeck ?? null);break;
     case 'resume':if(!ui.saving&&validSavedGame(ui.match)){ui.battleMode='match';ui.difficulty=ui.match.difficulty;ui.deckId=ui.match.deckId;route('battle');queueAI();}break;
     case 'close':closeModal();break;
     case 'backdrop':if(event.target===button)closeModal();break;
@@ -426,8 +524,19 @@ root.addEventListener('click',event=>{
     case 'log':showModal({type:'log'});break;
   }
 });
-root.addEventListener('change',event=>{if(event.target.id==='opponent-deck'){ui.opponentDeckId=event.target.value;void persistSettings();}});
-root.addEventListener('input',event=>{if(event.target.id==='card-search'){ui.search=event.target.value;renderMarkup(document.querySelector('#collection-grid'), collectionGrid());}});
+root.addEventListener('change',event=>{
+  const { id, value } = event.target;
+  if (id==='opponent-deck') { ui.opponentDeckId=value; void persistSettings(); }
+  if (id==='custom-deck') { ui.customDeckId=value; void persistSettings(); render(); }
+  if (id==='builder-power') { ui.deckDraft.baseDeckId=value; ui.deckDirty=true; render(); }
+  if (id==='builder-type') { ui.deckFilters.type=value; render(); }
+});
+root.addEventListener('input',event=>{
+  const { id, value } = event.target;
+  if (id==='card-search') { ui.search=value; renderMarkup(document.querySelector('#collection-grid'), collectionGrid()); }
+  if (id==='builder-name') { ui.deckDraft.name=value; ui.deckDirty=true; }
+  if (id==='builder-search') { ui.deckFilters.search=value; render(); }
+});
 root.addEventListener('contextmenu',event=>{const card=event.target.closest('[data-card]');if(card){event.preventDefault();showModal({type:'inspect',card:card.dataset.card});}});
 document.addEventListener('keydown',event=>{
   if(event.key==='Escape'){if(ui.modal)closeModal();else{ui.selected=null;render();}}
@@ -444,6 +553,8 @@ try {
   if(OPPONENTS.some(opponent=>opponent.id===data.settings.difficulty))ui.difficulty=data.settings.difficulty;
   if(data.settings.opponentDeckId==='random'||DECKS.some(deck=>deck.id===data.settings.opponentDeckId))ui.opponentDeckId=data.settings.opponentDeckId;
   ui.sound=!!data.settings.sound;ui.matches=data.matches;
+  ui.customDecks=data.customDecks;
+  if (ui.customDecks.some(deck=>deck.id===data.settings.customDeckId)) ui.customDeckId=data.settings.customDeckId;
   ui.tutorialCompleted=!!data.settings.tutorialCompleted;ui.tutorialDismissed=!!data.settings.tutorialDismissed;
   ui.tutorialProgress=restoreTutorial(data.tutorial);
   ui.match=restoreSavedGame(data.game);
