@@ -1,0 +1,181 @@
+.primary-button.mobile-match-link { display: none; }
+
+@media (max-width: 650px) {
+  body {
+    min-width: 0;
+    padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .topbar,
+  .in-battle .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    height: auto;
+    padding: max(6px, env(safe-area-inset-top)) 14px 0;
+  }
+
+  .topbar nav {
+    grid-area: 2 / 1 / 3 / -1;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    margin: 0;
+  }
+
+  .topbar .nav-item,
+  .in-battle .topbar .nav-item {
+    justify-content: center;
+    gap: 5px;
+    height: 44px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .nav-item svg { display: block; width: 14px; }
+  .topbar .rules-button { display: inline-flex; justify-content: center; }
+  .topbar :is(.brand, .rules-button, .icon-button) { min-height: 44px; }
+  .topbar :is(.rules-button, .icon-button) { width: 44px; }
+
+  .lobby, .collection-page, .history-page { padding-inline: 16px; }
+  .hero-section { padding-top: 24px; }
+  .hero-copy h1 {
+    font-size: clamp(36px, 10.5vw, 55px);
+    letter-spacing: 2px;
+    margin-block: 12px;
+  }
+
+  .hero-description { font-size: 13px; line-height: 1.7; }
+  .hero-meta { font-size: 10px; }
+  .hero-link { gap: 8px; margin-top: 14px; }
+  .hero-link > :is(a, button) { min-height: 44px; font-size: 12px; }
+  .hero-link > .underlined-button { display: none; }
+
+  .primary-button.mobile-match-link {
+    display: inline-flex;
+    text-decoration: none;
+    padding: 8px 10px;
+  }
+
+  .hero-showcase { height: 278px; margin: -8px 0 -18px; }
+  .showcase-caption { bottom: -38px; }
+  #match-setup { scroll-margin-top: max(12px, env(safe-area-inset-top)); }
+  .section-caption > p, .opponent-info > small { font-size: 12px; }
+  .opponent-card { padding-inline: 12px; }
+  .opponent-info { min-width: 0; }
+  .deck-tab { min-height: 48px; font-size: 12px; }
+  .deck-tab small { font-size: 10px; }
+  .deck-choice > p { min-height: 4.8em; font-size: 12px; line-height: 1.6; }
+  .deck-power-summary { min-height: 5.4em; font-size: 11px; }
+  .opponent-deck-label select,
+  .search-box input { min-height: 44px; font-size: 16px; }
+  .filter-tabs { gap: 5px; }
+  .filter-tabs > button { min-height: 44px; }
+  .dungeon-deck-tabs .deck-tab { overflow-wrap: anywhere; }
+  .dungeon-node-copy p { font-size: 12px; }
+
+  .battle-layout { padding-inline: 9px; }
+  .battle-heading { min-height: 44px; }
+  .battle-heading .text-button { min-height: 44px; font-size: 11px; }
+  .battle-heading .save-status { display: none; }
+
+  .battle-assist {
+    top: env(safe-area-inset-top);
+    height: 143px;
+    grid-template-rows: 28px 42px 44px;
+    gap: 5px;
+    padding: 8px;
+  }
+
+  .assist-header { grid-template-columns: minmax(0, 1fr) auto 52px; }
+  .assist-header > button { min-height: 28px; font-size: 11px; }
+  .assist-actions > button { font-size: 11px; }
+  .assist-message { line-height: 1.5; }
+
+  .hero-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 54px 62px 23px;
+    gap: 6px;
+    min-height: 59px;
+  }
+
+  .hero-identity { width: 100%; gap: 5px; }
+  .hero-avatar { width: 28px; height: 34px; font-size: 21px; }
+  .hero-identity-copy { min-width: 0; flex: 1; }
+  .hero-identity-copy > strong { font-size: 13px; }
+  .hero-identity-copy > strong > small { display: none; }
+  .health-bar { width: 100%; }
+  .hero-vitals { font-size: 9px; }
+  .hero-resources { min-width: 0; }
+  .hero-pots { width: auto; min-width: 0; margin: 0; }
+  .hero-pots > small { font-size: 8px; }
+  .deck-pile { margin-inline: 0; }
+
+  .board-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    min-height: 103px;
+    padding-inline: 3px;
+  }
+
+  .game-card.board, .empty-slot { width: 100%; height: 96px; }
+  .board .ink-art { height: 43px; }
+  .board .card-action-badge {
+    top: 37px;
+    min-width: 0;
+    max-width: calc(100% - 2px);
+    padding-inline: 2px;
+  }
+  .board .card-action-badge svg { display: none; }
+  .board .card-stats > span { min-width: 0; padding-inline: 3px; }
+  .board-keyword { overflow: hidden; text-overflow: ellipsis; }
+
+  .ability-panel { gap: 6px; }
+  .ability-button, .grave-button { min-height: 44px; }
+  .ability-panel > p { line-height: 1.5; }
+  .turn-hint { min-height: 50px; font-size: 11px; line-height: 1.5; }
+  .turn-buttons > button { min-height: 44px; font-size: 12px; }
+
+  .hand-label { font-size: 11px; }
+  .hand-scroll {
+    padding: 10px 5px;
+    min-height: 218px;
+    gap: 8px;
+    overscroll-behavior-x: contain;
+  }
+  .game-card.hand { width: 126px; height: 196px; flex: 0 0 126px; }
+  .hand .card-name { font-size: 13px; line-height: 1.2; }
+  .hand .card-description { font-size: 11px; line-height: 1.35; }
+  .hand .ink-art { height: 68px; }
+  .hand .card-action-badge { top: 56px; font-size: 10px; }
+
+  .modal-backdrop {
+    align-items: end;
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+  }
+
+  .modal {
+    max-height: calc(100dvh - max(8px, env(safe-area-inset-top)) - max(8px, env(safe-area-inset-bottom)));
+    padding-inline: 18px;
+    overscroll-behavior: contain;
+  }
+
+  .modal-close { width: 44px; height: 44px; top: 5px; right: 5px; }
+  .modal-lead, .rules-steps p { font-size: 13px; }
+  .dialog-actions > button { min-height: 44px; }
+  #toast { bottom: max(16px, env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 360px) {
+  .hero-showcase { transform: scale(.61); }
+  .hero-meta { gap: 5px; }
+  .deck-choice > p { min-height: 6.4em; }
+  .deck-power-summary { min-height: 7.2em; }
+  .battle-heading { gap: 5px; }
+  .round-label > span { font-size: 12px; }
+}
+
+@media (max-width: 650px) and (hover: none) {
+  .game-card.hand.playable:hover { transform: none; }
+}
