@@ -17,7 +17,7 @@ npm test       # 核心规则与完整人机对局
 npm run build # 生成 dist/ 静态站点
 ```
 
-将 `dist/` 部署到任意静态站点托管即可。页面资源使用根路径，默认部署在域名根目录。
+将 `dist/` 部署到任意静态站点托管即可。页面资源使用相对路径，可部署在域名根目录或 GitHub Pages 的仓库子路径。GitHub Pages 的发布来源选择 GitHub Actions，工作流会验证核心规则并发布 `dist/`。
 
 ## 已实现
 
