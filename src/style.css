@@ -18,3 +18,10 @@
 .hand .card-description{font-size:9px;line-height:1.5}
 @media(max-width:650px){.hand-scroll{justify-content:flex-start}.hand .card-description{font-size:8px}}
 @media(max-width:420px){.hero-showcase{transform:scale(.7)}}
+/* 提示和按钮各占固定轨道，选中后的文案不挤动手牌。 */
+.turn-controls{display:grid;grid-template-columns:minmax(0,1fr) auto}
+.turn-hint{min-width:0;min-height:31px;max-width:none}
+.turn-hint>span{min-width:0;flex:1}
+.turn-hint>button{flex-shrink:0}
+@media(min-width:651px){html{scrollbar-gutter:stable}}
+@media(max-width:650px){.turn-controls{grid-template-columns:minmax(0,1fr)}}
