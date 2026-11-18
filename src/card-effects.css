@@ -1,0 +1,51 @@
+.card-effect {
+  --effect-ink: #5d3d72;
+  --effect-paper: #e9deef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 21px;
+  flex-shrink: 0;
+  margin: 0 3px 3px;
+  padding: 1px 2px;
+  border: 1px solid var(--effect-ink);
+  border-radius: 3px;
+  color: var(--effect-ink);
+  background: var(--effect-paper);
+  font-size: var(--font-min);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.card-effect[data-effect="pot"] { --effect-ink: #7b3b23; --effect-paper: #f1e1ce; }
+.card-effect[data-effect="shield"] { --effect-ink: #325965; --effect-paper: #dcebed; }
+.card-effect svg { flex-shrink: 0; }
+.card-effect[data-effect-state="waiting"] {
+  background: var(--paper-light);
+  border-style: dashed;
+}
+.card-effect[data-effect-state="ready"] {
+  color: #fff8ec;
+  background: var(--effect-ink);
+  box-shadow: 0 0 0 1px var(--effect-paper);
+}
+.card-effect > b { font-weight: 700; }
+.hand .card-effect > span { font-weight: 400; }
+.hand .card-effect { gap: 3px; }
+.hand .card-effect svg { width: 10px; height: 10px; }
+.discount-note-hidden { visibility: hidden; }
+
+.card-cost-original {
+  position: absolute;
+  left: 29px;
+  top: 4px;
+  z-index: 2;
+  padding: 0 3px;
+  border: 1px solid #729371;
+  border-radius: 3px;
+  background: #e3edd5;
+  color: #3e613d;
+  font-size: var(--font-min);
+  line-height: 1.2;
+}

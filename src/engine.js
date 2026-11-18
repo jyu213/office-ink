@@ -204,13 +204,27 @@ function usePower(state, side) {
     case 'recall': putInHand(state, side, player.graveyard.pop()); break;
   }
 }
-function spellEffect(state, side, card, action, previousSpells) {
+export function spellDamage(card, player, opponent) {
+  switch (card.effect) {
+    case 'supplement': return player.spellsPlayed ? 4 : 2;
+    case 'chainDamage': return Math.min(4, 1 + player.spellsPlayed);
+    case 'minutes': return opponent.pots ? 5 : 3;
+    case 'cashPots': return 2 + opponent.pots * 3;
+    case 'armorStrike': return Math.min(6, player.armor);
+  }
+}
+
+export const hasGuard = player => player.board.some(unit => unitTags(unit).includes('guard'));
+export const transferPotCount = player => Math.min(2, player.pots);
+
+function spellEffect(state, side, card, action) {
   const player = state.players[side], opponent = state.players[enemy(side)];
   switch (card.effect) {
     case 'ack': player.armor += 3; draw(state, side); break;
-    case 'supplement': hit(state, action.target, previousSpells ? 4 : 2); break;
-    case 'transfer': { const count = Math.min(2, player.pots); player.pots -= count; addPots(state, enemy(side), count || 1, side); break; }
-    case 'minutes': hit(state, action.target, opponent.pots ? 5 : 3); break;
+    case 'supplement':
+    case 'chainDamage':
+    case 'minutes': hit(state, action.target, spellDamage(card, player, opponent)); break;
+    case 'transfer': { const count = transferPotCount(player); player.pots -= count; addPots(state, enemy(side), count || 1, side); break; }
     case 'freeze': { const unit = opponent.board.find(unit => unit.uid === action.target.id); unit.frozen = 1; unit.ready = false; draw(state, side); break; }
     case 'coffee': player.health = Math.min(player.maxHealth ?? MAX_HEALTH, player.health + 4); draw(state, side); break;
     case 'overtime': player.energy += 2; damageHero(state, side, 2); break;
@@ -222,15 +236,14 @@ function spellEffect(state, side, card, action, previousSpells) {
     case 'remove': opponent.board.find(unit => unit.uid === action.target.id).health = 0; break;
     case 'silence': opponent.board.find(unit => unit.uid === action.target.id).silenced = true; break;
     case 'bounce': { const index = opponent.board.findIndex(unit => unit.uid === action.target.id); const unit = opponent.board.splice(index, 1)[0]; putInHand(state, enemy(side), unit.id); break; }
-    case 'armorStrike': { const damage = Math.min(6, player.armor); hit(state, action.target, damage); player.armor = Math.max(0, player.armor - 3); break; }
-    case 'guardGain': player.armor += 4; if (player.board.some(unit => unitTags(unit).includes('guard'))) draw(state, side); break;
+    case 'armorStrike': hit(state, action.target, spellDamage(card, player, opponent)); player.armor = Math.max(0, player.armor - 3); break;
+    case 'guardGain': player.armor += 4; if (hasGuard(player)) draw(state, side); break;
     case 'recruit': summon(state, side, 'helper'); summon(state, side, 'helper'); break;
     case 'rally': player.board.forEach(unit => grow(unit, 1, 1)); break;
     case 'promotion': player.board.forEach(unit => grow(unit, 2)); draw(state, side); break;
     case 'sacrifice': player.board.find(unit => unit.uid === action.target.id).health = 0; draw(state, side, 2); break;
     case 'revive': summon(state, side, player.graveyard.pop()); break;
-    case 'cashPots': { const count = opponent.pots; opponent.pots = 0; hit(state, action.target, 2 + count * 3); break; }
-    case 'chainDamage': hit(state, action.target, Math.min(4, 1 + previousSpells)); break;
+    case 'cashPots': { const damage = spellDamage(card, player, opponent); opponent.pots = 0; hit(state, action.target, damage); break; }
   }
 }
 export function applyAction(original, action) {
@@ -255,7 +268,7 @@ export function applyAction(original, action) {
       if (secretIndex >= 0) {
         opponent.secrets.splice(secretIndex, 1);
         log(state, `${opponent.name}亮出「会议改看文档」，话术效果被反制。`, other, 'secret');
-      } else spellEffect(state, side, card, action, previousSpells);
+      } else spellEffect(state, side, card, action);
       player.spellsPlayed++;
       // 先结算牺牲和伤害，离场的成长引擎不能被后续加成救回。
       settle(state);
