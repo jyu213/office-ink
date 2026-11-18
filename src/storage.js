@@ -22,8 +22,9 @@ export async function loadLocalData() {
     const settings = tx.objectStore('kv').get('settings');
     const game = tx.objectStore('kv').get('current');
     const tutorial = tx.objectStore('kv').get('tutorial');
+    const dungeon = tx.objectStore('kv').get('dungeon');
     const matches = tx.objectStore('matches').getAll();
-    tx.oncomplete = () => resolve({ settings: settings.result || {}, game: game.result || null, tutorial: tutorial.result || null, matches: matches.result || [] });
+    tx.oncomplete = () => resolve({ settings: settings.result || {}, game: game.result || null, tutorial: tutorial.result || null, dungeon: dungeon.result || null, matches: matches.result || [] });
     tx.onerror = tx.onabort = () => reject(tx.error || new Error('读取失败'));
   });
 }
@@ -38,6 +39,7 @@ export async function saveSettings(settings) {
 }
 export async function saveGame(game) {
   if (game.mode === 'tutorial') throw new Error('教学进度应独立保存');
+  if (game.mode === 'dungeon') throw new Error('副本进度应独立保存');
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(['kv', 'matches'], 'readwrite');
@@ -56,5 +58,15 @@ export async function saveTutorial(tutorial) {
     else tx.objectStore('kv').put(tutorial, 'tutorial');
     tx.oncomplete = resolve;
     tx.onerror = tx.onabort = () => reject(tx.error || new Error('教学进度保存失败'));
+  });
+}
+
+export async function saveDungeon(run) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('kv', 'readwrite');
+    tx.objectStore('kv').put(run, 'dungeon');
+    tx.oncomplete = resolve;
+    tx.onerror = tx.onabort = () => reject(tx.error || new Error('副本进度保存失败'));
   });
 }

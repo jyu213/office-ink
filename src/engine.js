@@ -110,7 +110,13 @@ function startTurn(state, side) {
     if (effectOf(unit) === 'startArmor') player.armor++;
   }
   log(state, `${player.name}的回合 · ${player.energy} 点精力`, side, 'turn');
-  draw(state, side); settle(state);
+  const pressure = side === 1 ? state.bossPressure : null;
+  if (pressure && (state.turn / 2) % pressure.every === 0) {
+    damageHero(state, 0, pressure.damage);
+    log(state, `${player.name}发动「${pressure.name}」：你受到 ${pressure.damage} 点伤害。`, 1, 'power');
+  }
+  if (state.players[0].health > 0) draw(state, side);
+  settle(state);
 }
 export function createGame({ deckId = 'blame', difficulty = 'normal', opponentDeckId = 'random', seed = Date.now() >>> 0 } = {}) {
   if (!DECKS.some(deck => deck.id === deckId) || !OPPONENTS.some(item => item.id === difficulty) || opponentDeckId !== 'random' && !DECKS.some(deck => deck.id === opponentDeckId)) throw new Error('无效的套牌或对手');
@@ -186,7 +192,7 @@ function usePower(state, side) {
     case 'pot': addPots(state, enemy(side), 1, side); break;
     case 'discount': draw(state, side); player.spellDiscount = 1; break;
     case 'order': player.armor += 2; player.pots = Math.max(0, player.pots - 1); break;
-    case 'rest': player.health = Math.min(MAX_HEALTH, player.health + 2); player.armor += 2; break;
+    case 'rest': player.health = Math.min(player.maxHealth ?? MAX_HEALTH, player.health + 2); player.armor += 2; break;
     case 'recruit': summon(state, side, 'helper'); break;
     case 'recall': putInHand(state, side, player.graveyard.pop()); break;
   }
@@ -199,7 +205,7 @@ function spellEffect(state, side, card, action, previousSpells) {
     case 'transfer': { const count = Math.min(2, player.pots); player.pots -= count; addPots(state, enemy(side), count || 1, side); break; }
     case 'minutes': hit(state, action.target, opponent.pots ? 5 : 3); break;
     case 'freeze': { const unit = opponent.board.find(unit => unit.uid === action.target.id); unit.frozen = 1; unit.ready = false; draw(state, side); break; }
-    case 'coffee': player.health = Math.min(MAX_HEALTH, player.health + 4); draw(state, side); break;
+    case 'coffee': player.health = Math.min(player.maxHealth ?? MAX_HEALTH, player.health + 4); draw(state, side); break;
     case 'overtime': player.energy += 2; damageHero(state, side, 2); break;
     case 'coin': player.energy++; break;
     case 'align': opponent.board.forEach(unit => unit.health -= 2); break;
@@ -272,7 +278,7 @@ export function applyAction(original, action) {
       unit.health -= target.attack + (unitTags(target).includes('thorns') ? 1 : 0);
       log(state, `「${CARD_MAP[unit.id].name}」与「${CARD_MAP[target.id].name}」交锋。`, side, 'damage');
     }
-    if (tags.includes('lifesteal')) player.health = Math.min(MAX_HEALTH, player.health + dealt);
+    if (tags.includes('lifesteal')) player.health = Math.min(player.maxHealth ?? MAX_HEALTH, player.health + dealt);
   } else if (action.type === 'resolve') {
     player.energy--; player.pots--;
     log(state, `${player.name}花费 1 点精力，处理了 1 个锅。`, side, 'pot');
