@@ -86,7 +86,7 @@ docs/          机制评审和可重现的对战模拟记录
 
 ## 素材
 
-水墨图集使用内置 imagegen 生成，最终素材在 `assets/ink-atlas.png`；来源与提示词见 `assets/README.md`。卡牌数值是可游玩的首版参数，后续可通过对局数据调整平衡。
+国风水墨卡面与山水长卷使用内置 imagegen 生成，对应素材为 `assets/guofeng-atlas.webp` 和 `assets/guofeng-scroll.webp`。来源与提示词见 `assets/README.md`。卡牌数值是可游玩的首版参数，后续可通过对局数据调整平衡。
 
 职场和互联网用语的出处见 [牌面文案参考](docs/card-copy-sources.md)。
 

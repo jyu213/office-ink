@@ -1,0 +1,185 @@
+:root {
+  --paper: #f1ebdf;
+  --paper-light: #faf4e7;
+  --ink: #25231e;
+  --muted: #6a6357;
+  --line: #c7b99e;
+  --red: #a03728;
+  --green: #445c40;
+  --blue: #3a555b;
+  --ink-deep: #24251f;
+  --ink-light: #463f33;
+  --light-line: #d8cbb2;
+  --paper-edge: #e5d7bc;
+  --action-green: #3e6746;
+  --action-orange: #9e4824;
+  --action-blue: #365f72;
+}
+
+body {
+  background: radial-gradient(ellipse at 50% 20%, #fbf5e9 5%, transparent 55%),
+    radial-gradient(ellipse at 0 100%, #d3be981f, transparent 45%), var(--paper);
+}
+body::before { opacity: .27; }
+.topbar {
+  background: linear-gradient(180deg, #f9f2e480, #f5ebd543);
+  border-bottom-color: #a99a80;
+  box-shadow: 0 1px 0 #fffaf0;
+}
+.brand strong { color: var(--ink-deep); }
+.brand small, .top-actions .text-button { color: #6f6251; }
+.seal {
+  background: linear-gradient(135deg, #b84130, #8f2e20);
+  color: #fff1d7;
+  outline-color: #f0c4a4;
+  box-shadow: inset 0 0 5px #50180d77, 1px 2px 0 #4a302322;
+}
+.nav-item { color: #625a4a; }
+.nav-item.active { color: var(--red); }
+.site-footer { border-color: #d1c3a9; color: #716653; }
+
+.hero-section { position: relative; isolation: isolate; }
+.hero-section::before {
+  content: '';
+  position: absolute;
+  inset: 3px -24px 5px;
+  z-index: -1;
+  pointer-events: none;
+  background: url('/assets/guofeng-scroll.webp') right 44% / cover no-repeat;
+  mix-blend-mode: multiply;
+  opacity: .76;
+  mask-image: linear-gradient(90deg, transparent, #000 32%, #000 91%, transparent),
+    linear-gradient(180deg, transparent, #000 14%, #000 88%, transparent);
+  mask-composite: intersect;
+}
+.hero-copy h1 { color: var(--ink-deep); text-shadow: 0 1px #fff8e8; }
+.hero-description { color: #514a3e; }
+.hero-meta { color: #5c5445; }
+.hero-showcase .ink-circle { display: none; }
+.vertical-note, .showcase-caption { color: #5c5243; text-shadow: 0 0 7px #fdf0d9; }
+.showcase-seal {
+  color: #9b3324;
+  background: #f4e0be99;
+  border-color: #a03728c4;
+  outline: 1px solid #a0372877;
+  outline-offset: -5px;
+}
+.small-seal, .section-index { color: var(--red); border-color: #a0372890; }
+.setup-section, .bottom-strip { border-top-color: #baa98a; }
+.opponent-card { background: #fbf4e766; border-color: #d2c1a4; }
+.opponent-card.chosen { border-color: var(--red); background: #efe0cb; }
+.opponent-avatar {
+  background: #e8ddc4;
+  color: #3e4f36;
+  border: 1px solid #ab9b7e;
+  box-shadow: inset 0 0 0 3px #f1e8d6;
+}
+.opponent-avatar.opponent-1 { color: #943829; }
+.opponent-avatar.opponent-2 { color: #3b5154; }
+.opponent-info > small, .opponent-title, .section-caption > p, .deck-choice > p { color: #6d6451; }
+.dungeon-entry { background: #a03728; color: #fff3dc; }
+.primary-button { background: var(--ink-deep); border-color: var(--ink-deep); color: #fcf0d8; }
+.primary-button::before { border-color: #f1dfb75c; }
+.primary-button:hover:not(:disabled) { background: #3e4033; }
+.deck-tab.chosen { color: #6e2d20; border-color: #9f5945; background: #efddc6; }
+.deck-tab small { color: #6e624d; }
+
+.ink-art { background-image: url('/assets/guofeng-atlas.webp'); }
+.game-card {
+  --card-frame: #473e31;
+  --card-paper: #f6edd6;
+  background: var(--card-frame);
+  border-color: #72644b;
+  border-radius: 4px;
+  box-shadow: 0 4px 10px #34281730;
+}
+.game-card.type-spell { --card-frame: #394c3b; }
+.game-card.type-secret { --card-frame: #4e3d39; }
+.game-card::after { border-color: #decba180; border-radius: 3px; }
+.card-inner { background: var(--card-paper); border-color: #bca77a; border-radius: 2px; }
+.game-card .ink-art { mask-image: none; border-bottom-color: #b8a27b; }
+.card-copy { background: linear-gradient(180deg, #efe0c4, #f8efdb); }
+.card-cost {
+  background: #f7ecd4;
+  border-color: #7d6946;
+  border-radius: 4px 4px 6px 4px;
+  color: #372e22;
+  box-shadow: 0 1px 3px #33281566;
+}
+.card-cost.discounted { border-color: #4b7348; color: #345e36; background: #dbe7cb; }
+.card-kind, .type-spell .card-kind, .type-secret .card-kind {
+  border-color: #9e4233;
+  background: #f5ead6e8;
+  color: #8e3126;
+}
+.card-name { color: #28241e; }
+.card-description, .board-keyword { color: #554d3e; }
+.card-stats > span { background: #e9e5ce; border-color: #778467; color: #3d5235; }
+.card-stats > span.health-stat { background: #efdbc8; border-color: #ab7060; color: #863727; }
+.game-card.hand.cue-blocked, .game-card.board.cue-blocked { opacity: .82; }
+.game-card.cue-blocked .card-action-badge { color: #4e4c3d; background: #f2ead7; border-color: #8d826d; }
+
+.battlefield { isolation: isolate; position: relative; }
+.battlefield::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url('/assets/guofeng-scroll.webp') center 62% / cover no-repeat;
+  opacity: .16;
+  mix-blend-mode: multiply;
+  mask-image: radial-gradient(ellipse at center, #000 28%, transparent 78%);
+}
+.battle-divider > i, .card-back, .deck-pile {
+  background: #433e33;
+  color: #eee2c6;
+  border-color: #9b896a;
+}
+.battle-divider::before, .battle-divider::after { background: linear-gradient(90deg, transparent, #9b876366); }
+.battle-divider > span { color: #665741; }
+.empty-slot { border-color: #ae986e5c; }
+.empty-slot > span { color: #71624b; }
+.hero-avatar { background: #404b3b; border: 1px solid #a9956d; color: #f8ead0; }
+.side-1 .hero-avatar { background: #8a392e; border-color: #b27b67; }
+.hand-area { background: linear-gradient(#decba32c, transparent); }
+.battle-assist, .tutorial-coach { background: #f8efdd; border-color: #a39375; color: var(--ink); }
+.battle-assist { border-left-color: var(--action-green); }
+.tutorial-coach { border-left-color: var(--red); }
+.battle-assist.choosing-target { border-left-color: var(--action-orange); }
+.assist-header > strong, .assist-message { color: #425a3e; }
+.choosing-target .assist-header > strong, .choosing-target .assist-message { color: #8c4025; }
+.game-card.hand.cue-playable, .game-card.board.cue-attackable {
+  border-color: var(--action-green);
+  box-shadow: inset 0 0 0 1px var(--action-green), 0 0 0 2px #3e674657, 0 4px 8px #39362225;
+}
+.cue-playable > .card-action-badge, .cue-attackable > .card-action-badge {
+  background: var(--action-green);
+  color: #fff8e8;
+  border-color: #294b31;
+}
+.game-card.cue-target, .hero-identity.targetable { border-color: var(--action-orange); }
+.game-card.cue-target .card-action-badge, .hero-target-label { background: var(--action-orange); color: #fff7e9; }
+.game-card.cue-selected { border-color: var(--action-blue); }
+.cue-selected > .card-action-badge { background: var(--action-blue); }
+.tutorial-focus { outline-color: var(--red) !important; }
+
+.dungeon-node { background: #f7eedc; border-color: #b8a78b; }
+.dungeon-node.boss-node { border-color: #a66350; }
+.dungeon-art { background: #e8dac0; }
+.dungeon-seal, .result-seal.win { color: var(--red); border-color: #a03728a8; }
+.dungeon-checkpoint { background: #e6e8d8; }
+.dungeon-victory { background: #f1dcc6; border-color: #a86c56; }
+.modal { border-color: #a18b66; background: var(--paper-light); }
+.modal::before { border-color: #c3a9817d; }
+
+@media (max-width: 650px) {
+  .hero-section::before {
+    inset: auto -12px 9px;
+    height: 340px;
+    background-position: 65% center;
+    opacity: .65;
+  }
+  .hero-showcase .vertical-note { color: #635847; }
+  .battlefield::before { opacity: .12; }
+}
