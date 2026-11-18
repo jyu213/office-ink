@@ -1,6 +1,6 @@
 {
   "name": "office-ink",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "你先别急：水墨风职场策略卡牌，人机对战与本地存档",
@@ -9,7 +9,8 @@
     "start": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
     "test": "node --test tests/*.test.mjs",
-    "test:ui": "node tests/rendering.browser.mjs"
+    "test:ui": "node tests/rendering.browser.mjs && node tests/gameplay.browser.mjs",
+    "simulate": "node scripts/simulate.mjs"
   },
   "engines": { "node": ">=20" }
 }

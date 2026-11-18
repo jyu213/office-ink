@@ -1,0 +1,82 @@
+{
+  "seedsPerPair": 12,
+  "policy": "normal-vs-normal; row deck goes first",
+  "rows": [
+    {
+      "deckId": "blame",
+      "wins": {
+        "blame": 0.5833333333333334,
+        "combo": 0.25,
+        "control": 0.8333333333333334,
+        "shield": 0.3333333333333333,
+        "growth": 0.3333333333333333,
+        "recur": 0.9166666666666666
+      },
+      "averageRounds": 8.3
+    },
+    {
+      "deckId": "combo",
+      "wins": {
+        "blame": 0.8333333333333334,
+        "combo": 0.6666666666666666,
+        "control": 0.3333333333333333,
+        "shield": 0.75,
+        "growth": 0.6666666666666666,
+        "recur": 0.75
+      },
+      "averageRounds": 6.9
+    },
+    {
+      "deckId": "control",
+      "wins": {
+        "blame": 0.3333333333333333,
+        "combo": 1,
+        "control": 0.4166666666666667,
+        "shield": 0.25,
+        "growth": 0.75,
+        "recur": 0.5833333333333334
+      },
+      "averageRounds": 14
+    },
+    {
+      "deckId": "shield",
+      "wins": {
+        "blame": 0.75,
+        "combo": 0.75,
+        "control": 0.4166666666666667,
+        "shield": 0.4166666666666667,
+        "growth": 0.8333333333333334,
+        "recur": 0.9166666666666666
+      },
+      "averageRounds": 11.7
+    },
+    {
+      "deckId": "growth",
+      "wins": {
+        "blame": 1,
+        "combo": 0.8333333333333334,
+        "control": 0.5833333333333334,
+        "shield": 0.5,
+        "growth": 0.5833333333333334,
+        "recur": 0.8333333333333334
+      },
+      "averageRounds": 7.3
+    },
+    {
+      "deckId": "recur",
+      "wins": {
+        "blame": 0.5,
+        "combo": 0.25,
+        "control": 0.5,
+        "shield": 0.08333333333333333,
+        "growth": 0.3333333333333333,
+        "recur": 0.5833333333333334
+      },
+      "averageRounds": 8
+    }
+  ],
+  "finished": 432,
+  "unfinished": 0,
+  "turns": 7801,
+  "emptyTurns": 153
+}

@@ -25,3 +25,45 @@
 .turn-hint>button{flex-shrink:0}
 @media(min-width:651px){html{scrollbar-gutter:stable}}
 @media(max-width:650px){.turn-controls{grid-template-columns:minmax(0,1fr)}}
+/* 流派选择和战斗技能。 */
+.deck-choice{max-width:650px;flex:1;align-items:flex-start}
+.deck-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));flex:1;gap:6px;min-width:0}
+.deck-tab{border-color:#bcc1ae66;text-align:left;padding:8px 13px;min-height:46px}
+.deck-tab small{display:block;font-size:8px;font-weight:400;color:#8a927d;margin-top:4px}
+.deck-tab.chosen{border-color:#82916d;background:#d7ddcb88}
+.deck-choice>p{min-height:18px;line-height:1.9;padding-left:0;margin-top:0}
+.deck-power-summary{display:flex;align-items:center;gap:10px;width:100%;font-size:10px;color:#7c886e;line-height:1.8;min-height:25px}
+.deck-power-summary b{font-weight:500;white-space:nowrap;color:#576c4b}
+.deck-choice>.underlined-button{font-size:10px}
+.match-options{display:flex;flex-direction:column;gap:18px;flex-shrink:0;align-items:flex-end;max-width:335px}
+.opponent-deck-label{display:flex;align-items:center;gap:12px;font-size:10px;color:#818b72}
+.opponent-deck-label select{font:inherit;color:#55664b;background:#e5e8d999;border:1px solid #a6b29a;padding:7px 25px 7px 10px;border-radius:2px;min-width:135px}
+.ability-panel{display:flex;align-items:center;gap:14px;border-bottom:1px solid #c3c9b666;padding:10px 1px;min-height:68px}
+.ability-button{display:flex;align-items:center;gap:9px;border:1px solid #98a788;background:#dce2d366;padding:7px 11px;border-radius:3px;min-width:163px;min-height:45px;text-align:left;flex-shrink:0}
+.ability-button:not(:disabled):hover{background:#d3ddc7;border-color:#7d906b}
+.ability-button>span{font-family:Georgia,serif;font-size:23px;color:#657b51}
+.ability-button strong{font-family:var(--serif);font-size:15px;letter-spacing:1px;font-weight:500;flex:1}
+.ability-button small{font-family:var(--sans);display:block;font-size:8px;letter-spacing:0;color:#8a9579;margin-top:3px}
+.ability-button.used{opacity:.55}
+.ability-panel>p{font-size:10px;line-height:1.9;color:#7a876c;flex:1;min-width:0}
+.ability-panel>p>b{display:block;font-weight:500;color:var(--red);font-size:9px}
+.grave-button{display:flex;align-items:center;gap:5px;font-size:10px;color:#7d8a6f;white-space:nowrap;padding:7px 0}
+.grave-button b{font-family:Georgia,serif;font-size:15px;font-weight:400}
+.card-cost.discounted{color:#47782d;border-color:#6a904b;background:#d8e7c8}
+.kind-power{color:#5f7a49}
+.deck-detail-power{margin-top:20px;border:1px solid #b5c0a566;background:#dfe6d555;padding:13px 15px;color:#6d815b}
+.deck-detail-power>strong{font-size:13px;font-weight:500}
+.deck-detail-power>p{font-size:11px;line-height:1.8;margin-top:6px}
+.deck-detail-meta{display:flex;justify-content:space-between;font-size:10px;color:#8c977d;margin:19px 0 7px}
+.deck-card-list{margin-top:15px}
+.deck-card-list>button{display:flex;width:100%;align-items:center;gap:12px;padding:10px 7px;border-bottom:1px solid #cbd0be77;text-align:left}
+.deck-card-list>button:hover{background:#dce3d355}
+.deck-card-list>button>span{font-family:Georgia,serif;font-size:17px;min-width:23px;text-align:center;color:#6b8157}
+.deck-card-list>button>strong{font-family:var(--serif);font-size:17px;font-weight:400}
+.deck-card-list>button>small{font-size:9px;margin-left:auto;color:#909a80}
+.grave-empty{font-family:var(--serif);font-size:20px;letter-spacing:2px;text-align:center;color:#96a086;padding:45px 0}
+@media(max-width:900px){.battle-preparation{align-items:flex-end}.match-options{max-width:245px}.deck-tabs{gap:5px}.deck-tab{padding:8px 9px}.deck-power-summary{display:block}.deck-power-summary span{display:block}}
+@media(max-width:650px){.deck-tabs{flex-basis:100%;grid-template-columns:repeat(3,minmax(0,1fr))}.deck-tab{text-align:center;padding:9px 4px;font-size:11px}.deck-tab small{font-size:8px}.deck-choice>p{min-height:36px}.deck-power-summary{margin-top:-3px;font-size:10px}.match-options{max-width:none;align-items:stretch;gap:0;margin-top:20px}.opponent-deck-label{justify-content:space-between;font-size:11px}.opponent-deck-label select{min-width:165px}.match-options .start-actions{margin-top:17px}.ability-panel{gap:9px;min-height:70px;padding:9px 1px}.ability-button{min-width:131px;padding:7px;gap:6px}.ability-button strong{font-size:13px}.ability-button>span{font-size:21px}.ability-button>svg{display:none}.ability-panel>p{font-size:8px;line-height:1.8}.ability-panel>p>b{font-size:7px}.grave-button{font-size:8px;gap:3px}.grave-button svg{width:12px}.grave-button b{font-size:12px}.deck-card-list>button>strong{font-size:16px}}
+.ability-panel>p{min-height:48px}
+.deck-choice>p{min-height:38px}
+@media(max-width:900px){.deck-power-summary{min-height:57px}}
