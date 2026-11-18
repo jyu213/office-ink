@@ -1,5 +1,20 @@
 .primary-button.mobile-match-link { display: none; }
 
+/* 首页的展示牌整体缩放时，文字仍保持同样的下限。 */
+.hero-showcase { --showcase-font-min: calc(var(--font-min) / var(--showcase-scale)); }
+.hero-showcase :is(.card-kind, .card-description, .card-keyword, .card-ornament) { font-size: var(--showcase-font-min); }
+.hero-showcase .card-name { font-size: max(17px, var(--showcase-font-min)); }
+.hero-showcase :is(.card-stats > span, .showcase-seal) { font-size: max(18px, var(--showcase-font-min)); }
+.hero-showcase .vertical-note { font-size: max(13px, var(--showcase-font-min)); }
+.hero-showcase .showcase-caption { font-size: max(14px, var(--showcase-font-min)); }
+
+@media (max-width: 1150px) {
+  .hero-showcase .ink-art { height: 134px; }
+  .hero-showcase .card-copy { padding: 6px 6px 0; }
+  .hero-showcase .card-description { line-height: 1.25; margin-top: 4px; }
+  .hero-showcase .card-keyword { letter-spacing: .5px; }
+}
+
 @media (max-width: 650px) {
   body {
     min-width: 0;
@@ -28,7 +43,7 @@
     justify-content: center;
     gap: 5px;
     height: 44px;
-    font-size: 12px;
+    font-size: var(--font-min);
     white-space: nowrap;
   }
 
@@ -46,9 +61,9 @@
   }
 
   .hero-description { font-size: 13px; line-height: 1.7; }
-  .hero-meta { font-size: 10px; }
+  .hero-meta { font-size: var(--font-min); }
   .hero-link { gap: 8px; margin-top: 14px; }
-  .hero-link > :is(a, button) { min-height: 44px; font-size: 12px; }
+  .hero-link > :is(a, button) { min-height: 44px; font-size: var(--font-min); }
   .hero-link > .underlined-button { display: none; }
 
   .primary-button.mobile-match-link {
@@ -59,42 +74,46 @@
 
   .hero-showcase { height: 278px; margin: -8px 0 -18px; }
   .showcase-caption { bottom: -38px; }
+  .hero-showcase .vertical-note { letter-spacing: 2px; }
+  .hero-showcase .ink-art { height: 124px; }
   #match-setup { scroll-margin-top: max(12px, env(safe-area-inset-top)); }
-  .section-caption > p, .opponent-info > small { font-size: 12px; }
+  .section-caption > p, .opponent-info > small { font-size: var(--font-min); }
   .opponent-card { padding-inline: 12px; }
   .opponent-info { min-width: 0; }
-  .deck-tab { min-height: 48px; font-size: 12px; }
-  .deck-tab small { font-size: 10px; }
-  .deck-choice > p { min-height: 4.8em; font-size: 12px; line-height: 1.6; }
-  .deck-power-summary { min-height: 5.4em; font-size: 11px; }
+  .deck-tab { min-height: 48px; font-size: var(--font-min); }
+  .deck-tab small { font-size: var(--font-min); }
+  .deck-choice > p { min-height: 4.8em; font-size: var(--font-min); line-height: 1.6; }
+  .deck-power-summary { min-height: 5.4em; font-size: var(--font-min); }
   .opponent-deck-label select,
   .search-box input { min-height: 44px; font-size: 16px; }
   .filter-tabs { gap: 5px; }
   .filter-tabs > button { min-height: 44px; }
   .dungeon-deck-tabs .deck-tab { overflow-wrap: anywhere; }
-  .dungeon-node-copy p { font-size: 12px; }
+  .dungeon-node-copy p { font-size: var(--font-min); }
 
   .battle-layout { padding-inline: 9px; }
   .battle-heading { min-height: 44px; }
-  .battle-heading .text-button { min-height: 44px; font-size: 11px; }
+  .battle-heading .text-button { min-height: 44px; font-size: var(--font-min); }
   .battle-heading .save-status { display: none; }
+  .enemy-hand { justify-content: flex-start; }
+  .enemy-hand > small { position: static; align-self: center; margin-left: auto; white-space: nowrap; }
 
   .battle-assist {
     top: env(safe-area-inset-top);
-    height: 143px;
-    grid-template-rows: 28px 42px 44px;
+    height: 154px;
+    grid-template-rows: 28px 54px 44px;
     gap: 5px;
     padding: 8px;
   }
 
   .assist-header { grid-template-columns: minmax(0, 1fr) auto 52px; }
-  .assist-header > button { min-height: 28px; font-size: 11px; }
-  .assist-actions > button { font-size: 11px; }
+  .assist-header > button { min-height: 28px; font-size: var(--font-min); }
+  .assist-actions > button { font-size: var(--font-min); }
   .assist-message { line-height: 1.5; }
 
   .hero-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 54px 62px 23px;
+    grid-template-columns: minmax(0, 1fr) 56px 62px 23px;
     gap: 6px;
     min-height: 59px;
   }
@@ -105,50 +124,65 @@
   .hero-identity-copy > strong { font-size: 13px; }
   .hero-identity-copy > strong > small { display: none; }
   .health-bar { width: 100%; }
-  .hero-vitals { font-size: 9px; }
+  .hero-vitals { font-size: var(--font-min); }
   .hero-resources { min-width: 0; }
+  .energy-count { display: grid; grid-template-columns: auto auto; gap: 2px; align-items: baseline; }
+  .energy-count > em { grid-column: 1 / -1; margin-left: 0; text-align: center; }
   .hero-pots { width: auto; min-width: 0; margin: 0; }
-  .hero-pots > small { font-size: 8px; }
+  .hero-pots > small { font-size: var(--font-min); }
   .deck-pile { margin-inline: 0; }
 
   .board-row {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 4px;
-    min-height: 103px;
+    min-height: 145px;
     padding-inline: 3px;
   }
 
-  .game-card.board, .empty-slot { width: 100%; height: 96px; }
-  .board .ink-art { height: 43px; }
+  .game-card.board, .empty-slot { width: 100%; height: 137px; }
+  .board .ink-art { height: 54px; flex-shrink: 0; }
   .board .card-action-badge {
-    top: 37px;
+    top: 24px;
+    display: block;
+    width: max-content;
     min-width: 0;
-    max-width: calc(100% - 2px);
-    padding-inline: 2px;
+    max-width: 100%;
+    padding-inline: 1px;
+    line-height: 1.1;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   .board .card-action-badge svg { display: none; }
+  .board .card-copy { min-height: 0; overflow: hidden; }
+  .board .card-name {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    line-height: 1.15;
+  }
   .board .card-stats > span { min-width: 0; padding-inline: 3px; }
   .board-keyword { overflow: hidden; text-overflow: ellipsis; }
 
   .ability-panel { gap: 6px; }
   .ability-button, .grave-button { min-height: 44px; }
   .ability-panel > p { line-height: 1.5; }
-  .turn-hint { min-height: 50px; font-size: 11px; line-height: 1.5; }
-  .turn-buttons > button { min-height: 44px; font-size: 12px; }
+  .turn-hint { min-height: 54px; font-size: var(--font-min); line-height: 1.5; }
+  .turn-buttons > button { min-height: 44px; font-size: var(--font-min); }
 
-  .hand-label { font-size: 11px; }
+  .hand-label { font-size: var(--font-min); }
   .hand-scroll {
     padding: 10px 5px;
-    min-height: 218px;
+    min-height: 241px;
     gap: 8px;
     overscroll-behavior-x: contain;
   }
-  .game-card.hand { width: 126px; height: 196px; flex: 0 0 126px; }
+  .game-card.hand { width: 126px; height: 218px; flex: 0 0 126px; }
   .hand .card-name { font-size: 13px; line-height: 1.2; }
-  .hand .card-description { font-size: 11px; line-height: 1.35; }
+  .hand .card-description { font-size: var(--font-min); line-height: 1.35; }
   .hand .ink-art { height: 68px; }
-  .hand .card-action-badge { top: 56px; font-size: 10px; }
+  .hand .card-action-badge { top: 56px; font-size: var(--font-min); }
 
   .modal-backdrop {
     align-items: end;
@@ -168,12 +202,14 @@
 }
 
 @media (max-width: 360px) {
-  .hero-showcase { transform: scale(.61); }
+  .hero-showcase { --showcase-scale: .61; }
+  .hero-showcase .ink-art { height: 106px; }
+  .collection-grid .game-card { height: 302px; }
   .hero-meta { gap: 5px; }
   .deck-choice > p { min-height: 6.4em; }
   .deck-power-summary { min-height: 7.2em; }
   .battle-heading { gap: 5px; }
-  .round-label > span { font-size: 12px; }
+  .round-label > span { font-size: var(--font-min); }
 }
 
 @media (max-width: 650px) and (hover: none) {

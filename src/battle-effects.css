@@ -121,7 +121,7 @@
   border-radius: 2px;
   background: #5c4527;
   color: #fff4d3;
-  font-size: 10px;
+  font-size: var(--font-min);
   line-height: 1.1;
 }
 .guard-unit.cue-target .guard-seal { background: var(--action-orange); }
@@ -135,17 +135,20 @@
   border-radius: 2px;
   background: #f8edd4;
   color: #604522;
-  font-size: 10px;
+  font-size: var(--font-min);
   white-space: nowrap;
 }
 .turn-hint > .turn-hint-actions { display: inline-flex; flex: 0 0 auto; gap: 8px; align-items: center; }
 .turn-hint-actions > button { min-height: 31px; text-decoration: underline; white-space: nowrap; color: var(--red); }
 
 @media (max-width: 650px) {
-  .guard-seal { right: 2px; gap: 1px; font-size: 8px; padding: 2px; }
+  .guard-seal { right: 2px; gap: 1px; font-size: var(--font-min); padding: 2px; }
   .guard-seal svg { width: 9px; height: 9px; }
   .turn-hint-actions { flex-direction: column; gap: 0; }
   .turn-hint-actions > button { min-height: 22px; }
+}
+@media (max-width: 360px) {
+  .guard-seal svg { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .battle-fx-trail, .battle-fx-mote { display: none !important; }
